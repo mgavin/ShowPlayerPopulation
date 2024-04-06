@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34511.84
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RecordPlayerPopulationData", "RecordPlayerPopulationData\RecordPlayerPopulationData.vcxproj", "{27CDD692-932C-490A-8643-EE621D3DF3A4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{27CDD692-932C-490A-8643-EE621D3DF3A4}.Release|x64.ActiveCfg = Release|x64
+		{27CDD692-932C-490A-8643-EE621D3DF3A4}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6E330C03-C180-47C7-A5F9-EF8A6A1007D9}
+	EndGlobalSection
+EndGlobal
