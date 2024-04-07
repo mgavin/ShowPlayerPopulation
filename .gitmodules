@@ -1,3 +1,6 @@
 [submodule "csv-parser"]
 	path = csv-parser
 	url = https://github.com/vincentlaucsb/csv-parser
+[submodule "bakkesmodsdk"]
+	path = bakkesmodsdk
+	url = git@github.com:mgavin/bakkesmodsdk
