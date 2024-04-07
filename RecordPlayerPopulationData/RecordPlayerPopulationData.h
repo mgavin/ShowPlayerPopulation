@@ -1,11 +1,24 @@
 #pragma once
-
+#include <chrono>
+#include <fstream>
 #include "bakkesmod/imgui/imgui.h"
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "bakkesmod/plugin/PluginSettingsWindow.h"
+#include "bmhelper.h"
+#include "csv.hpp"
 #include "HookedEvents.h"
 
-class RecordPlayerPopulationData : public BakkesMod::Plugin::BakkesModPlugin, public BakkesMod::Plugin::PluginSettingsWindow {
+class RecordPlayerPopulationData :
+        public BakkesMod::Plugin::BakkesModPlugin,
+        public BakkesMod::Plugin::PluginSettingsWindow {
+private:
+        std::chrono::time_point<std::chrono::system_clock> last_time;
+
+        const std::filesystem::path RECORD_POPULATION_FILE =
+                gameWrapper->GetDataFolder().append("RecordPopulationData.csv");
+
+        void init_datafile();
+
 public:
         void onLoad() override;
         void onUnload() override;

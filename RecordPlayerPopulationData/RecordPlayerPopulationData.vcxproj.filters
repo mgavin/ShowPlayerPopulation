@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-    <PropertyGroup Label="Globals">
-      <BakkesModPath>$(registry:HKEY_CURRENT_USER\Software\BakkesMod\AppPath@BakkesModPath)</BakkesModPath>
-    </PropertyGroup>
+  <PropertyGroup Label="Globals">
+    <BakkesModPath>$(registry:HKEY_CURRENT_USER\Software\BakkesMod\AppPath@BakkesModPath)</BakkesModPath>
+  </PropertyGroup>
   <ItemGroup>
     <Filter Include="Source Files">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
@@ -16,8 +16,11 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-        <Filter Include="IMGUI">
+    <Filter Include="IMGUI">
       <UniqueIdentifier>{1bf6b855-36f0-41be-80c8-3840eecaf262}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CSV">
+      <UniqueIdentifier>{7b61215a-5178-4159-9587-e89e1fd4cd07}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -27,7 +30,7 @@
     <ClCompile Include="$(RootNamespace).cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-        <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.cpp">
+    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.cpp">
       <Filter>IMGUI</Filter>
     </ClCompile>
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_additions.cpp">
@@ -60,6 +63,33 @@
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imguivariouscontrols.cpp">
       <Filter>IMGUI</Filter>
     </ClCompile>
+    <ClCompile Include="..\csv-parser\include\internal\basic_csv_parser.cpp">
+      <Filter>CSV</Filter>
+    </ClCompile>
+    <ClCompile Include="..\csv-parser\include\internal\col_names.cpp">
+      <Filter>CSV</Filter>
+    </ClCompile>
+    <ClCompile Include="..\csv-parser\include\internal\csv_format.cpp">
+      <Filter>CSV</Filter>
+    </ClCompile>
+    <ClCompile Include="..\csv-parser\include\internal\csv_reader.cpp">
+      <Filter>CSV</Filter>
+    </ClCompile>
+    <ClCompile Include="..\csv-parser\include\internal\csv_reader_iterator.cpp">
+      <Filter>CSV</Filter>
+    </ClCompile>
+    <ClCompile Include="..\csv-parser\include\internal\csv_row.cpp">
+      <Filter>CSV</Filter>
+    </ClCompile>
+    <ClCompile Include="..\csv-parser\include\internal\csv_row_json.cpp">
+      <Filter>CSV</Filter>
+    </ClCompile>
+    <ClCompile Include="..\csv-parser\include\internal\csv_stat.cpp">
+      <Filter>CSV</Filter>
+    </ClCompile>
+    <ClCompile Include="..\csv-parser\include\internal\csv_utility.cpp">
+      <Filter>CSV</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(RootNamespace).h">
@@ -71,7 +101,7 @@
     <ClInclude Include="HookedEvents.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-        <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h">
+    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h">
       <Filter>IMGUI</Filter>
     </ClInclude>
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.h">
@@ -109,6 +139,42 @@
     </ClInclude>
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imstb_truetype.h">
       <Filter>IMGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\basic_csv_parser.hpp">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\col_names.hpp">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\common.hpp">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\csv_format.hpp">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\csv_reader.hpp">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\csv_row.hpp">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\csv_stat.hpp">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\csv_utility.hpp">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\csv_writer.hpp">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\internal\data_type.h">
+      <Filter>CSV</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csv-parser\include\csv.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="bmhelper.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

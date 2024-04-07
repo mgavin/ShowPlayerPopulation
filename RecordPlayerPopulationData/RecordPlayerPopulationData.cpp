@@ -1,5 +1,5 @@
-#include <format>
 #include "RecordPlayerPopulationData.h"
+#include <format>
 #include "HookedEvents.h"
 #include "Logger.h"
 
@@ -13,6 +13,11 @@ void RecordPlayerPopulationData::onLoad() {
         // initialize things
         _globalCvarManager        = cvarManager;
         HookedEvents::gameWrapper = gameWrapper;
+
+        init_datafile();
+
+        // so tired...
+        LOG("{}", last_time);
 }
 
 /// <summary>
@@ -31,6 +36,11 @@ void RecordPlayerPopulationData::onUnload() {
 /// </summary>
 void RecordPlayerPopulationData::RenderSettings() {
         // for imgui plugin window
+        CVarWrapper ticker       = cvarManager->getCvar("rppd_enable_topscroll");
+        bool        top_scroller = ticker.getBoolValue();
+        if (ImGui::Checkbox("Enable ticker scrolling at the top?", &top_scroller)) {
+                ticker.setValue(top_scroller);
+        }
 }
 
 /// <summary>
@@ -51,6 +61,35 @@ void RecordPlayerPopulationData::SetImGuiContext(uintptr_t ctx) {
 
 std::string RecordPlayerPopulationData::GetPluginName() {
         return "RecordPlayerPopulationData";
+}
+
+void RecordPlayerPopulationData::init_datafile() {
+        std::ofstream file {RECORD_POPULATION_FILE, std::ios::app};
+        if (!file.good()) {
+                throw std::filesystem::filesystem_error("DATA FILE NOT GOOD! UNRECOVERABLE!~", std::error_code());
+        }
+        if (!std::filesystem::exists(RECORD_POPULATION_FILE) || std::filesystem::is_empty(RECORD_POPULATION_FILE)) {
+                csv::CSVWriter<std::ofstream> recordwriter {file};
+                std::vector<std::string>      header {"DATETIME"};
+                header.emplace_back(
+                        begin(bmhelper::playlist_ids_str),
+                        end(bmhelper::playlist_ids_str),
+                        [](const auto & ele) -> std::string { return ele.second; });
+                recordwriter << header;
+        } else {
+                csv::CSVReader recordreader {RECORD_POPULATION_FILE.string()};
+                csv::CSVRow    row;
+
+                // go to last row
+                while (recordreader.read_row(row))
+                        ;
+                last_time = row["DATETIME"].get<std::chrono::time_point<std::chrono::system_clock>>();
+        }
+}
+
+std::string get_current_datetime() {
+        std::chrono::system_clock clock;
+        return std::format("{0:%F}T{0:%R%z}", clock.now());
 }
 
 /*
