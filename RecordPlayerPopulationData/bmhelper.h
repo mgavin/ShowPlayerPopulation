@@ -6,8 +6,8 @@
 
 namespace bmhelper {
         std::map<PlaylistIds, std::string> playlist_ids_str = {
-                {                PlaylistIds::Unknown,                 "Unknown"},
-                {                 PlaylistIds::Casual,                  "Casual"},
+                {                PlaylistIds::Unknown,                 "Unknown"}, // NO MATCHING PLAYLIST
+                {                 PlaylistIds::Casual,                  "Casual"}, // NO MATCHING PLAYLIST
                 {                   PlaylistIds::Duel,                    "Duel"},
                 {                PlaylistIds::Doubles,                 "Doubles"},
                 {               PlaylistIds::Standard,                "Standard"},
@@ -20,39 +20,39 @@ namespace bmhelper {
                 {      PlaylistIds::RankedTeamDoubles,       "RankedTeamDoubles"},
                 {         PlaylistIds::RankedStandard,          "RankedStandard"},
                 {       PlaylistIds::SnowDayPromotion,        "SnowDayPromotion"},
-                {           PlaylistIds::Experimental,            "Experimental"},
-                {      PlaylistIds::BasketballDoubles,       "BasketballDoubles"},
-                {                 PlaylistIds::Rumble,                  "Rumble"},
+                {           PlaylistIds::Experimental,            "Experimental"}, // NO MATCHING PLAYLIST
+                {      PlaylistIds::BasketballDoubles,       "BasketballDoubles"}, // NO MATCHING PLAYLIST
+                {                 PlaylistIds::Rumble,                  "Rumble"}, // NO MATCHING PLAYLIST
                 {               PlaylistIds::Workshop,                "Workshop"},
                 {      PlaylistIds::UGCTrainingEditor,       "UGCTrainingEditor"},
                 {            PlaylistIds::UGCTraining,             "UGCTraining"},
                 {             PlaylistIds::Tournament,              "Tournament"},
-                {               PlaylistIds::Breakout,                "Breakout"},
-                {       PlaylistIds::TenthAnniversary,        "TenthAnniversary"},
+                {               PlaylistIds::Breakout,                "Breakout"}, // NO MATCHING PLAYLIST
+                {       PlaylistIds::TenthAnniversary,        "TenthAnniversary"}, // NO MATCHING PLAYLIST
                 {                 PlaylistIds::FaceIt,                  "FaceIt"},
                 {PlaylistIds::RankedBasketballDoubles, "RankedBasketballDoubles"},
                 {           PlaylistIds::RankedRumble,            "RankedRumble"},
                 {         PlaylistIds::RankedBreakout,          "RankedBreakout"},
                 {          PlaylistIds::RankedSnowDay,           "RankedSnowDay"},
-                {            PlaylistIds::HauntedBall,             "HauntedBall"},
-                {              PlaylistIds::BeachBall,               "BeachBall"},
+                {            PlaylistIds::HauntedBall,             "HauntedBall"}, // NO MATCHING PLAYLIST
+                {              PlaylistIds::BeachBall,               "BeachBall"}, // NO MATCHING PLAYLIST
                 {                  PlaylistIds::Rugby,                   "Rugby"},
                 {         PlaylistIds::AutoTournament,          "AutoTournament"},
-                {             PlaylistIds::RocketLabs,              "RocketLabs"},
-                {                PlaylistIds::RumShot,                 "RumShot"},
-                {                PlaylistIds::GodBall,                 "GodBall"},
-                {               PlaylistIds::CoopVsAI,                "CoopVsAI"},
+                {             PlaylistIds::RocketLabs,              "RocketLabs"}, // NO MATCHING PLAYLIST
+                {                PlaylistIds::RumShot,                 "RumShot"}, // NO MATCHING PLAYLIST
+                {                PlaylistIds::GodBall,                 "GodBall"}, // NO MATCHING PLAYLIST
+                {               PlaylistIds::CoopVsAI,                "CoopVsAI"}, // NO MATCHING PLAYLIST
                 {             PlaylistIds::BoomerBall,              "BoomerBall"},
-                {         PlaylistIds::GodBallDoubles,          "GodBallDoubles"},
-                {         PlaylistIds::SpecialSnowDay,          "SpecialSnowDay"},
+                {         PlaylistIds::GodBallDoubles,          "GodBallDoubles"}, // NO MATCHING PLAYLIST
+                {         PlaylistIds::SpecialSnowDay,          "SpecialSnowDay"}, // NO MATCHING PLAYLIST
                 {               PlaylistIds::Football,                "Football"},
-                {                  PlaylistIds::Cubic,                   "Cubic"},
-                {         PlaylistIds::TacticalRumble,          "TacticalRumble"},
-                {           PlaylistIds::SpringLoaded,            "SpringLoaded"},
+                {                  PlaylistIds::Cubic,                   "Cubic"}, // NO MATCHING PLAYLIST
+                {         PlaylistIds::TacticalRumble,          "TacticalRumble"}, // NO MATCHING PLAYLIST
+                {           PlaylistIds::SpringLoaded,            "SpringLoaded"}, // NO MATCHING PLAYLIST
                 {             PlaylistIds::SpeedDemon,              "SpeedDemon"},
-                {               PlaylistIds::RumbleBM,                "RumbleBM"},
+                {               PlaylistIds::RumbleBM,                "RumbleBM"}, // NO MATCHING PLAYLIST
                 {               PlaylistIds::Knockout,                "Knockout"},
-                {             PlaylistIds::Thirdwheel,              "Thirdwheel"},
-                {          PlaylistIds::MagnusFutball,           "MagnusFutball"},
+                {             PlaylistIds::Thirdwheel,              "Thirdwheel"}, // NO MATCHING PLAYLIST
+                {          PlaylistIds::MagnusFutball,           "MagnusFutball"}, // NO MATCHING PLAYLIST
         };
 }  // namespace bmhelper

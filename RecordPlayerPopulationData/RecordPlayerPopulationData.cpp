@@ -22,6 +22,11 @@ void RecordPlayerPopulationData::onLoad() {
         std::chrono::system_clock clk;
         if ((clk.now() - last_time) < 5min) {
                 LOG("TOO SOON!");
+        } else {
+                // basically lag behind a second to wait for the game to "connect"...
+                // may still give a pop-up, but, fuck man if you're not going to tell me you're
+                // connected to the servers, then fuck it.
+                gameWrapper->SetTimeout([this](GameWrapper * gw) { CHECK_NOW(); }, 1000);
         }
 
         cvarManager->registerCvar(
@@ -30,11 +35,19 @@ void RecordPlayerPopulationData::onLoad() {
                 "Flag to determine showing the top ticker scroll showing player population");
 
         cvarManager->registerCvar("rppd_auto_enable", "0", "Flag to determine if matchmaking should be automatic");
+        cvarManager->registerCvar("rppd_show_overlay", "0", "Flag to determine if the overlay should be shown")
+                .addOnValueChanged(std::bind(
+                        &RecordPlayerPopulationData::ShowOverlay,
+                        this,
+                        std::placeholders::_1,
+                        std::placeholders::_2));
 
         HookedEvents::AddHookedEvent("Function Engine.Actor.Timer", [this](std::string ev) {
                 // THIS IS ACTUALLY A SECONDS TIMER
+                // SO IS `Function ProjectX.Timers_X.Set`
                 if (seconds_counter > 1e6)  // preventing overflow. just cuz.
                         seconds_counter = 0;
+
                 seconds_counter++;
                 bool               auto_enable = cvarManager->getCvar("rppd_auto_enable").getBoolValue();
                 MatchmakingWrapper mw          = gameWrapper->GetMatchmakingWrapper();
@@ -42,7 +55,7 @@ void RecordPlayerPopulationData::onLoad() {
                         // the one second delay between searching isn't necessary
                         // (no wait time is necessary)
                         // to trigger the "get playlist populations" function running every 5 seconds.
-                        // now to test how long it lasts
+                        // now to test how long it lasts (as far as I know it lasts forever.)
                         if (seconds_counter % 300 == 0) {
                                 mw.StartMatchmaking(PlaylistCategory::CASUAL);
                                 mw.CancelMatchmaking();
@@ -66,16 +79,16 @@ void RecordPlayerPopulationData::onLoad() {
                 // like, this doesn't even start getting called every 5 seconds until you queue for a game
 
                 [this](std::string ev) {
-                        LOG("getplaylistpopulations: seconds counter: {}", seconds_counter);
                         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
                         if (mw) {
                                 int tmpp = mw.GetTotalPlayersOnline();
                                 if (TOTAL_POP != tmpp) {
                                         TOTAL_POP = tmpp;
-                                        LOG("POPULATION UPDATED AT TIME: {}, TIMES UPDATED: {},  POPULATION: {}",
+                                        LOG("POPULATION UPDATED AT TIME: {}, TIMES UPDATED: {},  POPULATION: {}, GETPLAYLISTPOPULATIONS: seconds counter: {} ",
                                             get_current_datetime_str(),
                                             updated_count,
-                                            TOTAL_POP);
+                                            TOTAL_POP,
+                                            seconds_counter);
                                         updated_count++;
 
                                         write_population();
@@ -112,6 +125,12 @@ void RecordPlayerPopulationData::RenderSettings() {
                 auto_enable.setValue(bauto_enable);
         }
 
+        CVarWrapper show_overlay  = cvarManager->getCvar("rppd_show_overlay");
+        bool        bshow_overlay = show_overlay.getBoolValue();
+        if (ImGui::Checkbox("Show the overlay?", &bshow_overlay)) {
+                show_overlay.setValue(bshow_overlay);
+        }
+
         if (ImGui::Button("CHECK NOW")) {
                 gameWrapper->Execute([this](GameWrapper * gw) { CHECK_NOW(); });
         }
@@ -137,6 +156,14 @@ std::string RecordPlayerPopulationData::GetPluginName() {
         return "RecordPlayerPopulationData";
 }
 
+void RecordPlayerPopulationData::add_notifier(
+        std::string                                   cmd_name,
+        std::function<void(std::vector<std::string>)> do_func,
+        std::string                                   desc,
+        byte                                          PERMISSIONS) const {
+        cvarManager->registerNotifier(cmd_prefix + cmd_name, do_func, desc, PERMISSIONS);
+}
+
 void RecordPlayerPopulationData::init_datafile() {
         std::ofstream file {RECORD_POPULATION_FILE, std::ios::app};
         if (!file.good()) {
@@ -145,13 +172,9 @@ void RecordPlayerPopulationData::init_datafile() {
         if (!std::filesystem::exists(RECORD_POPULATION_FILE) || std::filesystem::is_empty(RECORD_POPULATION_FILE)) {
                 csv::CSVWriter<std::ofstream> recordwriter {file};
                 std::vector<std::string>      header {"DATETIME", "TOTALPOPULATION", "TOTALPLAYERSONLINE"};
-                // header.emplace_back(
-                //         begin(bmhelper::playlist_ids_str),
-                //         end(bmhelper::playlist_ids_str),
-                //         [](const auto & ele) -> std::string { return ele.second; });
-                // I WANTED THIS TO BE IN A SIMPLER FUNCTION THAT ALREADY EXISTED
-                // LIKE A CUSTOM EMPLACE_BACK
-                auto                          vv = std::views::values(bmhelper::playlist_ids_str);
+
+                // EASILY COPY THE HEADERS OVER
+                auto vv = std::views::values(bmhelper::playlist_ids_str);
                 std::copy(begin(vv), end(vv), std::back_inserter(header));
                 recordwriter << header;
         } else {
@@ -179,11 +202,13 @@ void RecordPlayerPopulationData::write_population() {
         std::ofstream                 file {RECORD_POPULATION_FILE, std::ios::app};
         csv::CSVWriter<std::ofstream> recordwriter {file};
         MatchmakingWrapper            mw = gameWrapper->GetMatchmakingWrapper();
+
         if (mw) {
                 std::vector<int> counts;
                 counts.push_back(mw.GetTotalPopulation());
                 counts.push_back(mw.GetTotalPlayersOnline());
                 for (const auto & element : bmhelper::playlist_ids_str) {
+                        LOG("CALLING UPDATE FOR PLAYLIST: {}", element.second);
                         counts.push_back(mw.GetPlayerCount(element.first));
                 }
 
@@ -198,6 +223,14 @@ void RecordPlayerPopulationData::write_population() {
 
                 recordwriter << strs;
         }
+}
+
+/// <summary>
+/// SHOWS THE OVERLAY!
+/// </summary>
+/// <param name="oldvalue">From "addonvaluechanged" ... I dont know exactly</param>
+/// <param name="cvar">From "addonvaluechanged" ... I dont know exactly</param>
+void RecordPlayerPopulationData::ShowOverlay(std::string oldvalue, CVarWrapper cvar) {
 }
 
 /// <summary>

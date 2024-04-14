@@ -27,6 +27,7 @@ class RecordPlayerPopulationData :
         public BakkesMod::Plugin::BakkesModPlugin,
         public BakkesMod::Plugin::PluginSettingsWindow {
 private:
+        static const std::string                           cmd_prefix;
         std::chrono::time_point<std::chrono::system_clock> last_time;
 
         const std::filesystem::path RECORD_POPULATION_FILE =
@@ -39,9 +40,16 @@ private:
         void                                               write_population();
         std::string                                        get_current_datetime_str();
         std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(std::string);
-        int                                                TOTAL_POP       = 0;
-        int                                                updated_count   = 1;
-        int                                                seconds_counter = 0;
+        int                                                TOTAL_POP               = 0;
+        int                                                updated_count           = 1;
+        int                                                seconds_counter         = 0;
+        bool                                               is_connected_to_servers = false;
+
+        void add_notifier(
+                std::string                                   cmd_name,
+                std::function<void(std::vector<std::string>)> do_func,
+                std::string                                   desc,
+                byte                                          PERMISSIONS = NULL) const;
 
 public:
         void onLoad() override;
@@ -50,6 +58,8 @@ public:
         void        RenderSettings() override;
         std::string GetPluginName() override;
         void        SetImGuiContext(uintptr_t ctx) override;
+
+        void ShowOverlay(std::string oldvalue, CVarWrapper cvar);
 
         //
         // inherit from
@@ -63,3 +73,5 @@ public:
         // bool        IsActiveOverlay() override;
         // bool        ShouldBlockInput() override;
 };
+
+const std::string RecordPlayerPopulationData::cmd_prefix = "rppd_";
