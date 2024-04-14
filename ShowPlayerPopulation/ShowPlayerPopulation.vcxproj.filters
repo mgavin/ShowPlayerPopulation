@@ -27,7 +27,7 @@
     <None Include="vs_property_pages\BakkesMod.props" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(RootNamespace).cpp">
+    <ClCompile Include="ShowPlayerPopulation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.cpp">
@@ -92,7 +92,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(RootNamespace).h">
+    <ClInclude Include="ShowPlayerPopulation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Logger.h">

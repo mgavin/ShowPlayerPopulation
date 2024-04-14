@@ -1,14 +1,14 @@
-#include "RecordPlayerPopulationData.h"
+#include "ShowPlayerPopulation.h"
 #include "HookedEvents.h"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(RecordPlayerPopulationData, "RecordPlayerPopulationData", "0.0.0", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.5.32", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
 /// <summary>
 /// do the following when your plugin is loaded
 /// </summary>
-void RecordPlayerPopulationData::onLoad() {
+void ShowPlayerPopulation::onLoad() {
         // initialize things
         _globalCvarManager        = cvarManager;
         HookedEvents::gameWrapper = gameWrapper;
@@ -19,88 +19,70 @@ void RecordPlayerPopulationData::onLoad() {
         LOG("{}", last_time);
 
         using namespace std::chrono_literals;
-        std::chrono::system_clock clk;
-        if ((clk.now() - last_time) < 5min) {
+        std::chrono::zoned_time clk {std::chrono::current_zone(), std::chrono::system_clock::now()};
+        if ((clk.get_local_time() - last_time.get_local_time()) < 5min) {
                 LOG("TOO SOON!");
-        } else {
-                // basically lag behind a second to wait for the game to "connect"...
-                // may still give a pop-up, but, fuck man if you're not going to tell me you're
-                // connected to the servers, then fuck it.
-                gameWrapper->SetTimeout([this](GameWrapper * gw) { CHECK_NOW(); }, 1000);
         }
-
         cvarManager->registerCvar(
-                "rppd_enable_topscroll",
+                cmd_prefix + "enable_topscroll",
                 "0",
                 "Flag to determine showing the top ticker scroll showing player population");
 
-        cvarManager->registerCvar("rppd_auto_enable", "0", "Flag to determine if matchmaking should be automatic");
-        cvarManager->registerCvar("rppd_show_overlay", "0", "Flag to determine if the overlay should be shown")
-                .addOnValueChanged(std::bind(
-                        &RecordPlayerPopulationData::ShowOverlay,
-                        this,
-                        std::placeholders::_1,
-                        std::placeholders::_2));
+        CVarWrapper show_overlay_cvar = cvarManager->registerCvar(
+                cmd_prefix + "show_overlay",
+                "0",
+                "Flag to determine if the overlay should be shown",
+                false);
 
-        HookedEvents::AddHookedEvent("Function Engine.Actor.Timer", [this](std::string ev) {
-                // THIS IS ACTUALLY A SECONDS TIMER
-                // SO IS `Function ProjectX.Timers_X.Set`
-                if (seconds_counter > 1e6)  // preventing overflow. just cuz.
-                        seconds_counter = 0;
-
-                seconds_counter++;
-                bool               auto_enable = cvarManager->getCvar("rppd_auto_enable").getBoolValue();
-                MatchmakingWrapper mw          = gameWrapper->GetMatchmakingWrapper();
-                if (mw && auto_enable) {
-                        // the one second delay between searching isn't necessary
-                        // (no wait time is necessary)
-                        // to trigger the "get playlist populations" function running every 5 seconds.
-                        // now to test how long it lasts (as far as I know it lasts forever.)
-                        if (seconds_counter % 300 == 0) {
-                                mw.StartMatchmaking(PlaylistCategory::CASUAL);
-                                mw.CancelMatchmaking();
-                        }
+        show_overlay_cvar.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
+                if (is_overlay_open != new_value.getBoolValue()) {
+                        gameWrapper->Execute([this](GameWrapper * gw) {
+                                // look, sometimes cvarManager just gets fucking lost.
+                                cvarManager->executeCommand("togglemenu ShowPlayerPopulation", false);
+                        });
                 }
-
-                // MAYBE THERE'S ACTUALLY ANOTHER FUNCTION?
         });
-        // cvarManager->registerNotifier(
-        //         "RPPD_CHECKNOW",
-        //         [this](std::vector<std::string> args) { CHECK_NOW(); },
-        //         "CHECK, RIGHT NOW, THE PLAYER POPULATION!",
-        //         NULL);
+
+        HookedEvents::AddHookedEvent(
+                "Function Engine.Actor.Timer",
+                [this](std::string eventName) {
+                        // might use this as a 5 minute timer.
+                },
+                true);
 
         HookedEvents::AddHookedEvent(
                 "Function ProjectX.OnlineGamePopulation_X.GetPlaylistPopulations",
-                // I would like to know how long this lasts.
-                // this seems to be a thing that bakkesmod does? but I can't figure that out necessarily
-                // (aka running the function scanner) without bakkesmod running
-
-                // like, this doesn't even start getting called every 5 seconds until you queue for a game
-
+                // conveniently stops after disconnected
                 [this](std::string ev) {
                         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
                         if (mw) {
                                 int tmpp = mw.GetTotalPlayersOnline();
                                 if (TOTAL_POP != tmpp) {
                                         TOTAL_POP = tmpp;
-                                        LOG("POPULATION UPDATED AT TIME: {}, TIMES UPDATED: {},  POPULATION: {}, GETPLAYLISTPOPULATIONS: seconds counter: {} ",
-                                            get_current_datetime_str(),
-                                            updated_count,
-                                            TOTAL_POP,
-                                            seconds_counter);
-                                        updated_count++;
-
                                         write_population();
                                 }
                         }
+                });
+
+        HookedEvents::AddHookedEvent(
+                "Function ProjectX.PsyNetConnection_X.EventDisconnected",
+                [this](std::string eventName) {
+                        // conveniently stops the playlist population query
+                });
+        HookedEvents::AddHookedEvent(
+                "Function ProjectX.PsyNetConnection_X.EventConnected",
+                [this](std::string eventName) {
+                        // conveniently is called whenever you connect to psynet
+                        // which puts you in a great state to "StartMatchingmaking" / query matchmaking
+
+                        CHECK_NOW();
                 });
 }
 
 /// <summary>
 ///  do the following when your plugin is unloaded
 /// </summary>
-void RecordPlayerPopulationData::onUnload() {
+void ShowPlayerPopulation::onUnload() {
         // destroy things
         // dont throw here
 }
@@ -111,7 +93,7 @@ void RecordPlayerPopulationData::onUnload() {
 /// manager. AFAIK, if your plugin doesn't have an associated *.set file for its
 /// settings, this will be used instead.
 /// </summary>
-void RecordPlayerPopulationData::RenderSettings() {
+void ShowPlayerPopulation::RenderSettings() {
         // for imgui plugin window
         CVarWrapper ticker       = cvarManager->getCvar("rppd_enable_topscroll");
         bool        top_scroller = ticker.getBoolValue();
@@ -119,16 +101,10 @@ void RecordPlayerPopulationData::RenderSettings() {
                 ticker.setValue(top_scroller);
         }
 
-        CVarWrapper auto_enable  = cvarManager->getCvar("rppd_auto_enable");
-        bool        bauto_enable = auto_enable.getBoolValue();
-        if (ImGui::Checkbox("Enable auto matchmaking refresh every 300 seconds?", &bauto_enable)) {
-                auto_enable.setValue(bauto_enable);
-        }
-
-        CVarWrapper show_overlay  = cvarManager->getCvar("rppd_show_overlay");
-        bool        bshow_overlay = show_overlay.getBoolValue();
-        if (ImGui::Checkbox("Show the overlay?", &bshow_overlay)) {
-                show_overlay.setValue(bshow_overlay);
+        CVarWrapper shoverlay  = cvarManager->getCvar(cmd_prefix + "show_overlay");
+        bool        bshoverlay = shoverlay.getBoolValue();
+        if (ImGui::Checkbox("Show the overlay?", &bshoverlay)) {
+                shoverlay.setValue(bshoverlay);
         }
 
         if (ImGui::Button("CHECK NOW")) {
@@ -148,23 +124,23 @@ void RecordPlayerPopulationData::RenderSettings() {
 /// so ¯\(°_o)/¯
 /// </summary>
 /// <param name="ctx">AFAIK The pointer to the ImGui context</param>
-void RecordPlayerPopulationData::SetImGuiContext(uintptr_t ctx) {
+void ShowPlayerPopulation::SetImGuiContext(uintptr_t ctx) {
         ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext *>(ctx));
 }
 
-std::string RecordPlayerPopulationData::GetPluginName() {
-        return "RecordPlayerPopulationData";
+std::string ShowPlayerPopulation::GetPluginName() {
+        return "Show Player Population";
 }
 
-void RecordPlayerPopulationData::add_notifier(
+void ShowPlayerPopulation::add_notifier(
         std::string                                   cmd_name,
         std::function<void(std::vector<std::string>)> do_func,
         std::string                                   desc,
-        byte                                          PERMISSIONS) const {
+        byte                                          PERMISSIONS = NULL) const {
         cvarManager->registerNotifier(cmd_prefix + cmd_name, do_func, desc, PERMISSIONS);
 }
 
-void RecordPlayerPopulationData::init_datafile() {
+void ShowPlayerPopulation::init_datafile() {
         std::ofstream file {RECORD_POPULATION_FILE, std::ios::app};
         if (!file.good()) {
                 throw std::filesystem::filesystem_error("DATA FILE NOT GOOD! UNRECOVERABLE!~", std::error_code());
@@ -190,7 +166,7 @@ void RecordPlayerPopulationData::init_datafile() {
         }
 }
 
-void RecordPlayerPopulationData::CHECK_NOW() {
+void ShowPlayerPopulation::CHECK_NOW() {
         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
         if (mw) {
                 mw.StartMatchmaking(PlaylistCategory::CASUAL);
@@ -198,22 +174,33 @@ void RecordPlayerPopulationData::CHECK_NOW() {
         }
 }
 
-void RecordPlayerPopulationData::write_population() {
+void ShowPlayerPopulation::write_population() {
         std::ofstream                 file {RECORD_POPULATION_FILE, std::ios::app};
         csv::CSVWriter<std::ofstream> recordwriter {file};
         MatchmakingWrapper            mw = gameWrapper->GetMatchmakingWrapper();
+
+        playlist_population.clear();
 
         if (mw) {
                 std::vector<int> counts;
                 counts.push_back(mw.GetTotalPopulation());
                 counts.push_back(mw.GetTotalPlayersOnline());
+                playlist_population.push_back({"Total Players Online", counts.back()});
                 for (const auto & element : bmhelper::playlist_ids_str) {
-                        LOG("CALLING UPDATE FOR PLAYLIST: {}", element.second);
                         counts.push_back(mw.GetPlayerCount(element.first));
+                        if (int n = counts.back(); n > 0) {
+                                playlist_population.push_back(
+                                        {std::vformat(
+                                                 "{}",
+                                                 std::make_format_args(
+                                                         bmhelper::playlist_ids_str_spaced[element.first])),
+                                         n});
+                        }
                 }
 
                 std::vector<std::string> strs;
                 strs.reserve(bmhelper::playlist_ids_str.size() + 1);
+                last_time = std::chrono::system_clock::now();
                 strs.push_back(get_current_datetime_str());
                 std::transform(
                         begin(counts),
@@ -223,21 +210,24 @@ void RecordPlayerPopulationData::write_population() {
 
                 recordwriter << strs;
         }
+        massage_data();
 }
 
 /// <summary>
-/// SHOWS THE OVERLAY!
+/// OOH LA LA
+///
+/// put the data in a representable format.
+///
+/// ... if it's necessary
 /// </summary>
-/// <param name="oldvalue">From "addonvaluechanged" ... I dont know exactly</param>
-/// <param name="cvar">From "addonvaluechanged" ... I dont know exactly</param>
-void RecordPlayerPopulationData::ShowOverlay(std::string oldvalue, CVarWrapper cvar) {
+void ShowPlayerPopulation::massage_data() {
 }
 
 /// <summary>
 /// RETURNS THE DATETIME AS A STRING!
 /// </summary>
 /// <returns>_now_ represented as a datetime string</returns>
-std::string RecordPlayerPopulationData::get_current_datetime_str() {
+std::string ShowPlayerPopulation::get_current_datetime_str() {
         const std::chrono::zoned_time t {std::chrono::current_zone(), std::chrono::system_clock::now()};
         return std::vformat(DATETIME_FORMAT_STR, std::make_format_args(t));
 }
@@ -247,7 +237,7 @@ std::string RecordPlayerPopulationData::get_current_datetime_str() {
 /// </summary>
 /// <param name="str">a string representation of the datetime</param>
 /// <returns>a time_point representing the string</returns>
-std::chrono::time_point<std::chrono::system_clock> RecordPlayerPopulationData::get_timepoint_from_str(std::string str) {
+std::chrono::time_point<std::chrono::system_clock> ShowPlayerPopulation::get_timepoint_from_str(std::string str) {
         std::chrono::utc_time<std::chrono::system_clock::duration> tmpd;
         std::istringstream                                         ss(str);
         ss >> std::chrono::parse(DATETIME_PARSE_STR, tmpd);
@@ -264,44 +254,66 @@ std::chrono::time_point<std::chrono::system_clock> RecordPlayerPopulationData::g
  * plugin's window in game through "togglemenu xyz"
  */
 
-/*
 /// <summary>
 /// do the following on togglemenu open
 /// </summary>
-void RecordPlayerPopulationData::OnOpen() {};
+void ShowPlayerPopulation::OnOpen() {
+        is_overlay_open = true;
+};
 
 /// <summary>
 /// do the following on menu close
 /// </summary>
-void RecordPlayerPopulationData::OnClose() {};
+void ShowPlayerPopulation::OnClose() {
+        is_overlay_open = false;
+};
 
 /// <summary>
 /// (ImGui) Code called while rendering your menu window
 /// </summary>
-void RecordPlayerPopulationData::Render() {};
+void ShowPlayerPopulation::Render() {
+        // SHOW THE DAMN NUMBERS, JIM!
+        ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
+        ImGui::Begin("Hey, cutie", NULL);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
+        ImGui::TextUnformatted(
+                std::vformat("POPULATIONS! LAST UPDATED: {0:%r} {0:%D}", std::make_format_args(last_time)).c_str());
+        ImGui::Indent(1.0f);
+        for (const std::pair<std::string, int> & playlist : playlist_population) {
+                ImGui::TextUnformatted(
+                        std::vformat("{}: {}", std::make_format_args(playlist.first, playlist.second)).c_str());
+        }
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
+        ImGui::End();
+};
 
 /// <summary>
 /// Returns the name of the menu to refer to it by
 /// </summary>
 /// <returns>The name used refered to by togglemenu</returns>
-std::string RecordPlayerPopulationData::GetMenuName() {
-        return "$safeprojectname";
+std::string ShowPlayerPopulation::GetMenuName() {
+        return "ShowPlayerPopulation";
 };
 
 /// <summary>
 /// Returns a std::string to show as the title
 /// </summary>
 /// <returns>The title of the menu</returns>
-std::string RecordPlayerPopulationData::GetMenuTitle() {
+std::string ShowPlayerPopulation::GetMenuTitle() {
         return "";
 };
 
 /// <summary>
 /// Is it the active overlay(window)?
+/// Might make this susceptible to being closed with Esc
+/// Makes it "active", aka, able to be manipulated when the plugin menu is closed.
 /// </summary>
 /// <returns>True/False for being the active overlay</returns>
-bool RecordPlayerPopulationData::IsActiveOverlay() {
-        return true;
+bool ShowPlayerPopulation::IsActiveOverlay() {
+        return false;
 };
 
 /// <summary>
@@ -309,7 +321,6 @@ bool RecordPlayerPopulationData::IsActiveOverlay() {
 /// (aka RocketLeague and BakkesMod windows)
 /// </summary>
 /// <returns>True/False for if bakkesmod should block input</returns>
-bool RecordPlayerPopulationData::ShouldBlockInput() {
+bool ShowPlayerPopulation::ShouldBlockInput() {
         return false;
 };
-*/

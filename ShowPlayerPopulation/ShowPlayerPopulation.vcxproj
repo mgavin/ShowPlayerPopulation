@@ -11,8 +11,9 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{27cdd692-932c-490a-8643-ee621d3df3a4}</ProjectGuid>
-    <RootNamespace>RecordPlayerPopulationData</RootNamespace>
+    <RootNamespace>ShowPlayerPopulation</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>ShowPlayerPopulation</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -43,7 +44,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\matthew\source\repos\RecordPlayerPopulationData\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\matthew\source\repos\ShowPlayerPopulation\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -57,7 +58,7 @@
     <None Include="vs_property_pages\BakkesMod.props" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(RootNamespace).cpp" />
+    <ClCompile Include="ShowPlayerPopulation.cpp" />
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.cpp" />
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imguivariouscontrols.cpp" />
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_additions.cpp" />
@@ -80,7 +81,7 @@
     <ClCompile Include="..\csv-parser\include\internal\csv_utility.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(RootNamespace).h" />
+    <ClInclude Include="ShowPlayerPopulation.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imguivariouscontrols.h" />
