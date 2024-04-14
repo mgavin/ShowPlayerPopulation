@@ -21,12 +21,13 @@ void ShowPlayerPopulation::onLoad() {
         using namespace std::chrono_literals;
         std::chrono::zoned_time clk {std::chrono::current_zone(), std::chrono::system_clock::now()};
         if ((clk.get_local_time() - last_time.get_local_time()) < 5min) {
+                // I wanted to have some sort of "timeout" to basically keep people from spamming their shit?
                 LOG("TOO SOON!");
         }
-        cvarManager->registerCvar(
-                cmd_prefix + "enable_topscroll",
-                "0",
-                "Flag to determine showing the top ticker scroll showing player population");
+        // cvarManager->registerCvar(
+        //         cmd_prefix + "enable_topscroll",
+        //         "0",
+        //         "Flag to determine showing the top ticker scroll showing player population");
 
         CVarWrapper show_overlay_cvar = cvarManager->registerCvar(
                 cmd_prefix + "show_overlay",
@@ -42,13 +43,6 @@ void ShowPlayerPopulation::onLoad() {
                         });
                 }
         });
-
-        HookedEvents::AddHookedEvent(
-                "Function Engine.Actor.Timer",
-                [this](std::string eventName) {
-                        // might use this as a 5 minute timer.
-                },
-                true);
 
         HookedEvents::AddHookedEvent(
                 "Function ProjectX.OnlineGamePopulation_X.GetPlaylistPopulations",
@@ -77,6 +71,11 @@ void ShowPlayerPopulation::onLoad() {
 
                         CHECK_NOW();
                 });
+
+        HookedEvents::AddHookedEvent(
+                "Function TAGame.StatusObserver_MenuStack_TA.HandleMenuChange",
+                [this](std::string eventName) { SET_WHICH_MENU_I_AM_IN(); });
+        SET_WHICH_MENU_I_AM_IN();
 }
 
 /// <summary>
@@ -95,11 +94,11 @@ void ShowPlayerPopulation::onUnload() {
 /// </summary>
 void ShowPlayerPopulation::RenderSettings() {
         // for imgui plugin window
-        CVarWrapper ticker       = cvarManager->getCvar("rppd_enable_topscroll");
-        bool        top_scroller = ticker.getBoolValue();
-        if (ImGui::Checkbox("Enable ticker scrolling at the top?", &top_scroller)) {
-                ticker.setValue(top_scroller);
-        }
+        // CVarWrapper ticker       = cvarManager->getCvar("rppd_enable_topscroll");
+        // bool        top_scroller = ticker.getBoolValue();
+        // if (ImGui::Checkbox("Enable ticker scrolling at the top?", &top_scroller)) {
+        //        ticker.setValue(top_scroller);
+        //}
 
         CVarWrapper shoverlay  = cvarManager->getCvar(cmd_prefix + "show_overlay");
         bool        bshoverlay = shoverlay.getBoolValue();
@@ -246,6 +245,27 @@ std::chrono::time_point<std::chrono::system_clock> ShowPlayerPopulation::get_tim
         return tmptp;
 }
 
+void ShowPlayerPopulation::SET_WHICH_MENU_I_AM_IN() {
+        // clear flags
+        in_main_menu = in_playlist_menu = in_game_menu = false;
+
+        // check what menu we're in when this gets triggered
+        MenuStackWrapper msw = gameWrapper->GetMenuStack();
+        if (msw) {
+                std::string menu_name = msw.GetTopMenu();
+                if (menu_name == "RootMenuMovie") {
+                        LOG("IN MAIN MENU");
+                        in_main_menu = true;
+                } else if (menu_name == "PlayMenuV4Movie") {
+                        LOG("IN PLAYLIST MENU");
+                        in_playlist_menu = true;
+                } else if (menu_name == "MidGameMenuMovie") {
+                        LOG("IN GAME MENU");
+                        in_game_menu = true;
+                }
+        }
+}
+
 /*
  * for when you've inherited from BakkesMod::Plugin::PluginWindow.
  * this lets  you do "togglemenu (GetMenuName())" in BakkesMod's console...
@@ -269,25 +289,63 @@ void ShowPlayerPopulation::OnClose() {
 };
 
 /// <summary>
+/// inspiration: https://stackoverflow.com/questions/64653747/how-to-center-align-text-horizontally
+/// </summary>
+/// <param name="text">The text to center.</param>
+void ShowPlayerPopulation::center_imgui_text(const std::string & text) {
+        // calc width so far.
+        int   cur_col            = ImGui::GetColumnIndex();
+        float total_width_so_far = 0.0f;
+        while (--cur_col >= 0) {
+                // get each column width, down to 0, break at -1
+                total_width_so_far += ImGui::GetColumnWidth(cur_col);
+        }
+
+        float width      = ImGui::GetContentRegionAvailWidth();
+        float text_width = ImGui::CalcTextSize(text.c_str()).x;
+
+        float indent = (width - text_width) * 0.5f;
+
+        float min_indent = 0.0f;
+        if (std::fabs(indent - min_indent) <= 1e-6) {
+                indent = min_indent;
+        }
+
+        ImGui::SetCursorPosX(total_width_so_far + indent);
+        ImGui::Text(text.c_str());
+}
+
+/// <summary>
 /// (ImGui) Code called while rendering your menu window
 /// </summary>
 void ShowPlayerPopulation::Render() {
-        // SHOW THE DAMN NUMBERS, JIM!
-        ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
-        ImGui::Begin("Hey, cutie", NULL);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
-        ImGui::TextUnformatted(
-                std::vformat("POPULATIONS! LAST UPDATED: {0:%r} {0:%D}", std::make_format_args(last_time)).c_str());
-        ImGui::Indent(1.0f);
-        for (const std::pair<std::string, int> & playlist : playlist_population) {
-                ImGui::TextUnformatted(
-                        std::vformat("{}: {}", std::make_format_args(playlist.first, playlist.second)).c_str());
+        if (in_main_menu || in_game_menu) {
+                // SHOW THE DAMN NUMBERS, JIM!
+                ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+                ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
+                ImGui::Begin("Hey, cutie", NULL);
+                ImGui::SetWindowFontScale(1.2f);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
+                center_imgui_text(
+                        std::vformat("POPULATIONS! LAST UPDATED: {0:%r} {0:%D}", std::make_format_args(last_time))
+                                .c_str());
+                ImGui::NewLine();
+                ImGui::Indent(20.0f);
+                ImGui::BeginColumns("populationnums", 2, ImGuiColumnsFlags_NoResize);
+                // ImGui::colum
+                for (const std::pair<std::string, int> & playlist : playlist_population) {
+                        ImGui::TextUnformatted(std::vformat("{}:", std::make_format_args(playlist.first)).c_str());
+                        ImGui::NextColumn();
+                        center_imgui_text(std::vformat("{}", std::make_format_args(playlist.second)));
+                        ImGui::NextColumn();
+                }
+                ImGui::EndColumns();
+                ImGui::PopStyleColor();
+                ImGui::PopStyleColor();
+                ImGui::End();
+        } else if (in_playlist_menu) {
         }
-        ImGui::PopStyleColor();
-        ImGui::PopStyleColor();
-        ImGui::End();
 };
 
 /// <summary>
@@ -320,7 +378,8 @@ bool ShowPlayerPopulation::IsActiveOverlay() {
 /// Should this block input from the rest of the program?
 /// (aka RocketLeague and BakkesMod windows)
 /// </summary>
-/// <returns>True/False for if bakkesmod should block input</returns>
+/// <returns>True/False for if bakkesmod should block input. Could be
+/// `return ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard;`</returns>
 bool ShowPlayerPopulation::ShouldBlockInput() {
         return false;
 };

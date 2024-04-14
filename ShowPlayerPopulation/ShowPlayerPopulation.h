@@ -4,6 +4,7 @@
 #include <fstream>
 #include <ranges>
 #include "bakkesmod/imgui/imgui.h"
+#include "bakkesmod/imgui/imgui_internal.h"
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "bakkesmod/plugin/PluginSettingsWindow.h"
 #include "bakkesmod/plugin/pluginwindow.h"
@@ -37,6 +38,9 @@ private:
         const std::string                        DATETIME_PARSE_STR  = "%FT%T%z";
         int                                      TOTAL_POP           = 0;
         bool                                     is_overlay_open     = false;
+        bool                                     in_main_menu        = false;
+        bool                                     in_playlist_menu    = false;
+        bool                                     in_game_menu        = false;
         std::vector<std::pair<std::string, int>> playlist_population;
 
         void                                               init_datafile();
@@ -45,6 +49,8 @@ private:
         void                                               massage_data();
         std::string                                        get_current_datetime_str();
         std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(std::string);
+        void                                               SET_WHICH_MENU_I_AM_IN();
+        void                                               center_imgui_text(const std::string & text);
 
         void add_notifier(
                 std::string                                   cmd_name,

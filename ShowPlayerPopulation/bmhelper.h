@@ -59,10 +59,10 @@ namespace bmhelper {
         std::map<PlaylistIds, std::string> playlist_ids_str_spaced = {
                 {                PlaylistIds::Unknown,                   "Unknown"}, // NO MATCHING PLAYLIST
                 {                 PlaylistIds::Casual,                    "Casual"}, // NO MATCHING PLAYLIST
-                {                   PlaylistIds::Duel,                      "Duel"},
-                {                PlaylistIds::Doubles,                   "Doubles"},
-                {               PlaylistIds::Standard,                  "Standard"},
-                {                  PlaylistIds::Chaos,                     "Chaos"},
+                {                   PlaylistIds::Duel,               "Casual Duel"},
+                {                PlaylistIds::Doubles,            "Casual Doubles"},
+                {               PlaylistIds::Standard,           "Casual Standard"},
+                {                  PlaylistIds::Chaos,              "Casual Chaos"},
                 {           PlaylistIds::PrivateMatch,             "Private Match"},
                 {                 PlaylistIds::Season,                    "Season"},
                 {     PlaylistIds::OfflineSplitscreen,       "Offline Splitscreen"},
@@ -70,10 +70,10 @@ namespace bmhelper {
                 {         PlaylistIds::RankedSoloDuel,          "Ranked Solo Duel"},
                 {      PlaylistIds::RankedTeamDoubles,       "Ranked Team Doubles"},
                 {         PlaylistIds::RankedStandard,           "Ranked Standard"},
-                {       PlaylistIds::SnowDayPromotion,         "SnowDay Promotion"},
+                {       PlaylistIds::SnowDayPromotion,           "Casual Snow Day"},
                 {           PlaylistIds::Experimental,              "Experimental"}, // NO MATCHING PLAYLIST
                 {      PlaylistIds::BasketballDoubles,        "Basketball Doubles"}, // NO MATCHING PLAYLIST
-                {                 PlaylistIds::Rumble,                    "Rumble"}, // NO MATCHING PLAYLIST
+                {                 PlaylistIds::Rumble,             "Casual Rumble"}, // NO MATCHING PLAYLIST
                 {               PlaylistIds::Workshop,                  "Workshop"},
                 {      PlaylistIds::UGCTrainingEditor,       "UGC Training Editor"},
                 {            PlaylistIds::UGCTraining,              "UGC Training"},
@@ -84,7 +84,7 @@ namespace bmhelper {
                 {PlaylistIds::RankedBasketballDoubles, "Ranked Basketball Doubles"},
                 {           PlaylistIds::RankedRumble,             "Ranked Rumble"},
                 {         PlaylistIds::RankedBreakout,           "Ranked Breakout"},
-                {          PlaylistIds::RankedSnowDay,            "Ranked SnowDay"},
+                {          PlaylistIds::RankedSnowDay,           "Ranked Snow Day"},
                 {            PlaylistIds::HauntedBall,              "Haunted Ball"}, // NO MATCHING PLAYLIST
                 {              PlaylistIds::BeachBall,                "Beach Ball"}, // NO MATCHING PLAYLIST
                 {                  PlaylistIds::Rugby,                     "Rugby"},
