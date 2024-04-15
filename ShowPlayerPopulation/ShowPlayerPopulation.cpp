@@ -109,8 +109,15 @@ void ShowPlayerPopulation::RenderSettings() {
         if (ImGui::Button("CHECK NOW")) {
                 gameWrapper->Execute([this](GameWrapper * gw) { CHECK_NOW(); });
         }
-}
 
+        if (ImGui::Checkbox("SHOW ALL?", &show_all)) {
+                if (show_all) {
+                        show1 = show2 = show3 = show4 = show5 = show6 = true;
+                } else {
+                        show1 = show2 = show3 = show4 = show5 = show6 = false;
+                }
+        }
+}
 /// <summary>
 /// "SetImGuiContext happens when the plugin’s ImGui is initialized."
 /// https://wiki.bakkesplugins.com/imgui/custom_fonts/
@@ -323,7 +330,7 @@ void ShowPlayerPopulation::Render() {
                 // SHOW THE DAMN NUMBERS, JIM!
                 ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
-                ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
                 ImGui::Begin("Hey, cutie", NULL);
                 ImGui::SetWindowFontScale(1.2f);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
@@ -346,6 +353,71 @@ void ShowPlayerPopulation::Render() {
                 ImGui::End();
         } else if (in_playlist_menu) {
         }
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+        ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
+        ImVec2 onebar, twobar, threebar, fourbar, fivebar, sixbar;
+        if (show1) {
+                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+                ImGui::Begin("show1", &show1, ImGuiWindowFlags_NoTitleBar);
+                onepos = ImGui::GetWindowPos();
+                ImGui::SetWindowPos(
+                        ImVec2(std::max(0.0f, std::min(onepos.x, ImGui::GetIO().DisplaySize.x)),
+                               std::max(0.0f, std::min(onepos.y, ImGui::GetIO().DisplaySize.y))));
+                onebar = ImGui::GetWindowSize();
+                ImGui::End();
+        }
+        if (show2) {
+                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
+                ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
+                ImGui::Begin("show2", &show2, ImGuiWindowFlags_NoTitleBar);
+                twopos = ImGui::GetWindowPos();
+                twobar = ImGui::GetWindowSize();
+                ImGui::End();
+        }
+        if (show3) {
+                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
+                ImGui::SetNextWindowPos(ImVec2(30, 30), ImGuiCond_FirstUseEver);
+                ImGui::Begin("show3", &show3, ImGuiWindowFlags_NoTitleBar);
+                threepos = ImGui::GetWindowPos();
+                threebar = ImGui::GetWindowSize();
+                ImGui::End();
+        }
+        if (show4) {
+                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
+                ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
+                ImGui::Begin("show4", &show4, ImGuiWindowFlags_NoTitleBar);
+                fourpos = ImGui::GetWindowPos();
+                fourbar = ImGui::GetWindowSize();
+                ImGui::End();
+        }
+        if (show5) {
+                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
+                ImGui::SetNextWindowPos(ImVec2(50, 50), ImGuiCond_FirstUseEver);
+                ImGui::Begin("show5", &show5, ImGuiWindowFlags_NoTitleBar);
+                fivepos = ImGui::GetWindowPos();
+                fivebar = ImGui::GetWindowSize();
+                ImGui::End();
+        }
+        if (show6) {
+                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
+                ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
+                ImGui::Begin("show6", &show6, ImGuiWindowFlags_NoTitleBar);
+                sixpos = ImGui::GetWindowPos();
+                sixbar = ImGui::GetWindowSize();
+                ImGui::End();
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(70, 70), ImGuiCond_FirstUseEver);
+        ImGui::Begin("stats", NULL);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
+        center_imgui_text(std::vformat(
+                "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                std::make_format_args(onepos.x, onepos.y, onebar.x, onebar.y)));
+        ImGui::End();
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
 };
 
 /// <summary>

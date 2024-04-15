@@ -43,6 +43,9 @@ private:
         bool                                     in_game_menu        = false;
         std::vector<std::pair<std::string, int>> playlist_population;
 
+        bool show1 = false, show2 = false, show3 = false, show4 = false, show5 = false, show6 = false;
+        bool show_all;
+
         void                                               init_datafile();
         void                                               CHECK_NOW();
         void                                               write_population();
