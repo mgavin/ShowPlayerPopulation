@@ -2,7 +2,7 @@
 
 #include <map>
 #include <string>
-#include "bakkesmod/wrappers/MatchmakingWrapper.h"
+#include "bakkesmod/wrappers/matchmakingwrapper.h"
 
 namespace bmhelper {
         std::map<PlaylistIds, std::string> playlist_ids_str = {

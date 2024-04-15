@@ -2,7 +2,7 @@
 #include "HookedEvents.h"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.5.32", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.7.8", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
 /// <summary>
@@ -356,6 +356,9 @@ void ShowPlayerPopulation::Render() {
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
         ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
         ImVec2 onebar, twobar, threebar, fourbar, fivebar, sixbar;
+        float  topX, topY, botX, botY;
+        topX = ImGui::GetIO().DisplaySize.x / 3.556;
+
         if (show1) {
                 ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);

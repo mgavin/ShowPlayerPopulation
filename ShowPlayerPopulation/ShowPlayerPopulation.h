@@ -6,7 +6,7 @@
 #include "bakkesmod/imgui/imgui.h"
 #include "bakkesmod/imgui/imgui_internal.h"
 #include "bakkesmod/plugin/bakkesmodplugin.h"
-#include "bakkesmod/plugin/PluginSettingsWindow.h"
+#include "bakkesmod/plugin/pluginsettingswindow.h"
 #include "bakkesmod/plugin/pluginwindow.h"
 #include "bmhelper.h"
 #include "csv.hpp"
