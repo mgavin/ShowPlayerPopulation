@@ -4,3 +4,6 @@
 [submodule "bakkesmodsdk"]
 	path = bakkesmodsdk
 	url = git@github.com:mgavin/bakkesmodsdk
+[submodule "implot"]
+	path = implot
+	url = git@github.com:epezent/implot

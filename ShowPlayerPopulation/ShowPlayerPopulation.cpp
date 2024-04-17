@@ -117,7 +117,16 @@ void ShowPlayerPopulation::RenderSettings() {
                         show1 = show2 = show3 = show4 = show5 = show6 = false;
                 }
         }
+
+        if (ImGui::Checkbox("show window stats", &curiouser)) {
+                if (curiouser) {
+                        showstats = true;
+                } else {
+                        showstats = false;
+                }
+        }
 }
+
 /// <summary>
 /// "SetImGuiContext happens when the plugin’s ImGui is initialized."
 /// https://wiki.bakkesplugins.com/imgui/custom_fonts/
@@ -354,14 +363,18 @@ void ShowPlayerPopulation::Render() {
         } else if (in_playlist_menu) {
         }
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-        ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
-        ImVec2 onebar, twobar, threebar, fourbar, fivebar, sixbar;
-        float  topX, topY, botX, botY;
-        topX = ImGui::GetIO().DisplaySize.x / 3.556;
-
+        ImVec2      onepos, twopos, threepos, fourpos, fivepos, sixpos;
+        ImVec2      onebar, twobar, threebar, fourbar, fivebar, sixbar;
+        float       topX, topY, botX, botY;
+        const float WIN_HEIGHT = 40.0f;
+        const float WIN_WIDTH  = 247.0f;
+        topX                   = (ImGui::GetIO().DisplaySize.x / 7.111) + (588 - WIN_WIDTH);
+        topY                   = (ImGui::GetIO().DisplaySize.y / 4.817) - WIN_HEIGHT;
+        botX                   = (ImGui::GetIO().DisplaySize.x / 5.688) + (530 - WIN_WIDTH);
+        botY                   = (ImGui::GetIO().DisplaySize.y / 2.051) - WIN_HEIGHT;
         if (show1) {
-                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_Always);
+                ImGui::SetNextWindowPos(ImVec2(topX, topY), ImGuiCond_Always);
                 ImGui::Begin("show1", &show1, ImGuiWindowFlags_NoTitleBar);
                 onepos = ImGui::GetWindowPos();
                 ImGui::SetWindowPos(
@@ -371,15 +384,15 @@ void ShowPlayerPopulation::Render() {
                 ImGui::End();
         }
         if (show2) {
-                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
-                ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_Always);
+                ImGui::SetNextWindowPos(ImVec2(botX, botY), ImGuiCond_Always);
                 ImGui::Begin("show2", &show2, ImGuiWindowFlags_NoTitleBar);
                 twopos = ImGui::GetWindowPos();
                 twobar = ImGui::GetWindowSize();
                 ImGui::End();
         }
         if (show3) {
-                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
+                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(30, 30), ImGuiCond_FirstUseEver);
                 ImGui::Begin("show3", &show3, ImGuiWindowFlags_NoTitleBar);
                 threepos = ImGui::GetWindowPos();
@@ -387,15 +400,15 @@ void ShowPlayerPopulation::Render() {
                 ImGui::End();
         }
         if (show4) {
-                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
-                ImGui::SetNextWindowPos(ImVec2(40, 40), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowPos(ImVec2(WIN_HEIGHT, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::Begin("show4", &show4, ImGuiWindowFlags_NoTitleBar);
                 fourpos = ImGui::GetWindowPos();
                 fourbar = ImGui::GetWindowSize();
                 ImGui::End();
         }
         if (show5) {
-                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
+                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(50, 50), ImGuiCond_FirstUseEver);
                 ImGui::Begin("show5", &show5, ImGuiWindowFlags_NoTitleBar);
                 fivepos = ImGui::GetWindowPos();
@@ -403,23 +416,40 @@ void ShowPlayerPopulation::Render() {
                 ImGui::End();
         }
         if (show6) {
-                ImGui::SetNextWindowSize(ImVec2(247, 40), ImGuiCond_Always);
+                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
                 ImGui::Begin("show6", &show6, ImGuiWindowFlags_NoTitleBar);
                 sixpos = ImGui::GetWindowPos();
                 sixbar = ImGui::GetWindowSize();
                 ImGui::End();
         }
+        if (showstats) {
+                ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowPos(ImVec2(70, 70), ImGuiCond_FirstUseEver);
+                ImGui::Begin("stats", NULL);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
+                center_imgui_text(std::vformat(
+                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                        std::make_format_args(onepos.x, onepos.y, onebar.x, onebar.y)));
+                center_imgui_text(std::vformat(
+                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                        std::make_format_args(twopos.x, twopos.y, twobar.x, twobar.y)));
+                center_imgui_text(std::vformat(
+                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                        std::make_format_args(threepos.x, threepos.y, threebar.x, threebar.y)));
+                center_imgui_text(std::vformat(
+                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                        std::make_format_args(fourpos.x, fourpos.y, fourbar.x, fourbar.y)));
+                center_imgui_text(std::vformat(
+                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                        std::make_format_args(fivepos.x, fivepos.y, fivebar.x, fivebar.y)));
+                center_imgui_text(std::vformat(
+                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                        std::make_format_args(sixpos.x, sixpos.y, sixbar.x, sixbar.y)));
+                ImGui::End();
+                ImGui::PopStyleColor();
+        }
 
-        ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2(70, 70), ImGuiCond_FirstUseEver);
-        ImGui::Begin("stats", NULL);
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
-        center_imgui_text(std::vformat(
-                "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
-                std::make_format_args(onepos.x, onepos.y, onebar.x, onebar.y)));
-        ImGui::End();
-        ImGui::PopStyleColor();
         ImGui::PopStyleColor();
 };
 
