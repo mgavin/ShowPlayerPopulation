@@ -5,6 +5,8 @@
 #include "bakkesmod/plugin/pluginsettingswindow.h"
 #include "bakkesmod/plugin/pluginwindow.h"
 
+#include "imgui.h"
+
 /*
  * SAMPLE:
  *
@@ -23,23 +25,29 @@ class ShowPlayerPopulation :
         public BakkesMod::Plugin::PluginSettingsWindow,
         public BakkesMod::Plugin::PluginWindow {
 private:
-        static const std::string                                     cmd_prefix;
-        std::chrono::zoned_time<std::chrono::system_clock::duration> last_time {
-                std::chrono::current_zone()};
+        static const std::string    cmd_prefix;
         const std::filesystem::path RECORD_POPULATION_FILE =
-                gameWrapper->GetDataFolder().append("RecordPopulationData.csv");
-        const std::string                        DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
-        const std::string                        DATETIME_PARSE_STR  = "%FT%T%z";
-        int                                      TOTAL_POP           = 0;
-        bool                                     is_overlay_open     = false;
-        bool                                     in_main_menu        = false;
-        bool                                     in_playlist_menu    = false;
-        bool                                     in_game_menu        = false;
+                gameWrapper->GetDataFolder().append("ShowPlayerPopulation/RecordPopulationData.csv");
+        const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
+                gameWrapper->GetDataFolder().append("ShowPlayerPopulation/FirstTimePopulationNumberPlacements.txt");
+        const std::string DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
+        const std::string DATETIME_PARSE_STR  = "%FT%T%z";
+
+        std::chrono::zoned_time<std::chrono::system_clock::duration> last_time {std::chrono::current_zone()};
+        int                                                          TOTAL_POP = 0;
+
+        // flags for different points in the plugin
+        bool is_overlay_open  = false;
+        bool in_main_menu     = false;
+        bool in_playlist_menu = false;
+        bool in_game_menu     = false;
+
+        // data
         std::vector<std::pair<std::string, int>> playlist_population;
 
-        const int hours_min  = 0;
-        const int hours_max  = 144;
-        int       hours_kept = 0;
+        const int            hours_min = 0;
+        const int            hours_max = 168;
+        std::shared_ptr<int> hours_kept;
 
         // flags for showing numbers above playlists
         // ordered 1-6, top left to bottom right
@@ -51,19 +59,24 @@ private:
         bool slot6 = false;
         bool show_all;
 
+        ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
+        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos, slot6_init_pos;
+        void   SNAPSHOT_PLAYLIST_POSITIONS();
+        void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
+
         // these may end up going away
         bool showstats;
         bool curiouser;
 
+        // member functions
         void                                               init_datafile();
         void                                               CHECK_NOW();
         void                                               write_population();
         void                                               massage_data();
         std::string                                        get_current_datetime_str();
-        std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(
-                std::string);
-        void SET_WHICH_MENU_I_AM_IN();
-        void center_imgui_text(const std::string & text);
+        std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(std::string);
+        void                                               SET_WHICH_MENU_I_AM_IN();
+        void                                               center_imgui_text(const std::string & text);
 
         void add_notifier(
                 std::string                                   cmd_name,

@@ -22,6 +22,9 @@
     <Filter Include="CSV">
       <UniqueIdentifier>{7b61215a-5178-4159-9587-e89e1fd4cd07}</UniqueIdentifier>
     </Filter>
+    <Filter Include="IMPLOT">
+      <UniqueIdentifier>{a7f34aa1-f604-4d9e-acd3-425ba68b096f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="vs_property_pages\BakkesMod.props" />
@@ -89,6 +92,12 @@
     </ClCompile>
     <ClCompile Include="..\csv-parser\include\internal\csv_utility.cpp">
       <Filter>CSV</Filter>
+    </ClCompile>
+    <ClCompile Include="..\implot\implot.cpp">
+      <Filter>IMPLOT</Filter>
+    </ClCompile>
+    <ClCompile Include="..\implot\implot_demo.cpp">
+      <Filter>IMPLOT</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -175,6 +184,9 @@
     </ClInclude>
     <ClInclude Include="bmhelper.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\implot\implot.h">
+      <Filter>IMPLOT</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

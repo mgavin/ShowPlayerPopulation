@@ -44,7 +44,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\matthew\source\repos\ShowPlayerPopulation\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui;C:\Users\matthew\source\repos\ShowPlayerPopulation\implot;C:\Users\matthew\source\repos\ShowPlayerPopulation\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -58,6 +58,8 @@
     <None Include="vs_property_pages\BakkesMod.props" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\implot\implot.cpp" />
+    <ClCompile Include="..\implot\implot_demo.cpp" />
     <ClCompile Include="ShowPlayerPopulation.cpp" />
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.cpp" />
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imguivariouscontrols.cpp" />
@@ -81,6 +83,7 @@
     <ClCompile Include="..\csv-parser\include\internal\csv_utility.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\implot\implot.h" />
     <ClInclude Include="ShowPlayerPopulation.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.h" />
