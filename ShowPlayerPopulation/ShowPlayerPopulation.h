@@ -45,9 +45,9 @@ private:
         // data
         std::vector<std::pair<std::string, int>> playlist_population;
 
-        const int            hours_min = 0;
-        const int            hours_max = 168;
-        std::shared_ptr<int> hours_kept;
+        const int            hours_min  = 0;
+        const int            hours_max  = 168;
+        std::shared_ptr<int> hours_kept = std::make_shared<int>(24);
 
         // flags for showing numbers above playlists
         // ordered 1-6, top left to bottom right

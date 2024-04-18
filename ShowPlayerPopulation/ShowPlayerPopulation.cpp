@@ -61,7 +61,7 @@ void ShowPlayerPopulation::onLoad() {
 
         CVarWrapper hrs_cvar = cvarManager->registerCvar(
                 cmd_prefix + "hours",
-                "0"
+                "0",
                 "Number of hours to keep of population data.",
                 false);
         hrs_cvar.bindTo(hours_kept);
@@ -185,7 +185,7 @@ void ShowPlayerPopulation::RenderSettings() {
                 SNAPSHOT_PLAYLIST_POSITIONS();
         }
 
-        ImGui::Text("%d hours selected. (%d days, %d hours)", hours_kept, hours_kept / 24, hours_kept % 24);
+        ImGui::Text("%d hours selected. (%d days, %d hours)", *hours_kept, *hours_kept / 24, *hours_kept % 24);
         ImGui::SameLine(0.0f, 100.0f);
         if (ImGui::Button("PRUNE DATA FILE?")) {
                 // prune the data file
