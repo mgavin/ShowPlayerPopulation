@@ -1,16 +1,9 @@
 #pragma once
 #include <chrono>
-#include <format>
-#include <fstream>
-#include <ranges>
-#include "bakkesmod/imgui/imgui.h"
-#include "bakkesmod/imgui/imgui_internal.h"
+
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "bakkesmod/plugin/pluginsettingswindow.h"
 #include "bakkesmod/plugin/pluginwindow.h"
-#include "bmhelper.h"
-#include "csv.hpp"
-#include "HookedEvents.h"
 
 /*
  * SAMPLE:
@@ -31,8 +24,9 @@ class ShowPlayerPopulation :
         public BakkesMod::Plugin::PluginWindow {
 private:
         static const std::string                                     cmd_prefix;
-        std::chrono::zoned_time<std::chrono::system_clock::duration> last_time {std::chrono::current_zone()};
-        const std::filesystem::path                                  RECORD_POPULATION_FILE =
+        std::chrono::zoned_time<std::chrono::system_clock::duration> last_time {
+                std::chrono::current_zone()};
+        const std::filesystem::path RECORD_POPULATION_FILE =
                 gameWrapper->GetDataFolder().append("RecordPopulationData.csv");
         const std::string                        DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
         const std::string                        DATETIME_PARSE_STR  = "%FT%T%z";
@@ -43,24 +37,39 @@ private:
         bool                                     in_game_menu        = false;
         std::vector<std::pair<std::string, int>> playlist_population;
 
-        bool show1 = false, show2 = false, show3 = false, show4 = false, show5 = false, show6 = false,
-             showstats = false, curiouser;
+        const int hours_min  = 0;
+        const int hours_max  = 144;
+        int       hours_kept = 0;
+
+        // flags for showing numbers above playlists
+        // ordered 1-6, top left to bottom right
+        bool slot1 = false;
+        bool slot2 = false;
+        bool slot3 = false;
+        bool slot4 = false;
+        bool slot5 = false;
+        bool slot6 = false;
         bool show_all;
+
+        // these may end up going away
+        bool showstats;
+        bool curiouser;
 
         void                                               init_datafile();
         void                                               CHECK_NOW();
         void                                               write_population();
         void                                               massage_data();
         std::string                                        get_current_datetime_str();
-        std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(std::string);
-        void                                               SET_WHICH_MENU_I_AM_IN();
-        void                                               center_imgui_text(const std::string & text);
+        std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(
+                std::string);
+        void SET_WHICH_MENU_I_AM_IN();
+        void center_imgui_text(const std::string & text);
 
         void add_notifier(
                 std::string                                   cmd_name,
                 std::function<void(std::vector<std::string>)> do_func,
                 std::string                                   desc,
-                byte                                          PERMISSIONS) const;
+                unsigned char                                 PERMISSIONS) const;
 
 public:
         void onLoad() override;
@@ -84,5 +93,3 @@ public:
         bool        IsActiveOverlay() override;
         bool        ShouldBlockInput() override;
 };
-
-const std::string ShowPlayerPopulation::cmd_prefix = "rppd_";

@@ -1,6 +1,19 @@
 #include "ShowPlayerPopulation.h"
+#include <format>
+#include <fstream>
+#include <ranges>
+
+#include "bakkesmod/imgui/imgui.h"
+#include "bakkesmod/imgui/imgui_internal.h"
+
+#include "csv.hpp"
+#include "implot.h"
+
+#include "bmhelper.h"
 #include "HookedEvents.h"
 #include "Logger.h"
+
+const std::string ShowPlayerPopulation::cmd_prefix = "rppd_";
 
 BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.7.8", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
@@ -19,15 +32,19 @@ void ShowPlayerPopulation::onLoad() {
         LOG("{}", last_time);
 
         using namespace std::chrono_literals;
-        std::chrono::zoned_time clk {std::chrono::current_zone(), std::chrono::system_clock::now()};
+        std::chrono::zoned_time clk {
+                std::chrono::current_zone(),
+                std::chrono::system_clock::now()};
         if ((clk.get_local_time() - last_time.get_local_time()) < 5min) {
-                // I wanted to have some sort of "timeout" to basically keep people from spamming their shit?
+                // I wanted to have some sort of "timeout" to basically keep people from
+                // spamming their shit?
                 LOG("TOO SOON!");
         }
         // cvarManager->registerCvar(
         //         cmd_prefix + "enable_topscroll",
         //         "0",
-        //         "Flag to determine showing the top ticker scroll showing player population");
+        //         "Flag to determine showing the top ticker scroll showing player
+        //         population");
 
         CVarWrapper show_overlay_cvar = cvarManager->registerCvar(
                 cmd_prefix + "show_overlay",
@@ -35,14 +52,18 @@ void ShowPlayerPopulation::onLoad() {
                 "Flag to determine if the overlay should be shown",
                 false);
 
-        show_overlay_cvar.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
-                if (is_overlay_open != new_value.getBoolValue()) {
-                        gameWrapper->Execute([this](GameWrapper * gw) {
-                                // look, sometimes cvarManager just gets fucking lost.
-                                cvarManager->executeCommand("togglemenu ShowPlayerPopulation", false);
-                        });
-                }
-        });
+        show_overlay_cvar.addOnValueChanged(
+                [this](std::string old_value, CVarWrapper new_value) {
+                        if (is_overlay_open != new_value.getBoolValue()) {
+                                gameWrapper->Execute([this](GameWrapper * gw) {
+                                        // look, sometimes cvarManager just gets fucking
+                                        // lost.
+                                        cvarManager->executeCommand(
+                                                "togglemenu ShowPlayerPopulation",
+                                                false);
+                                });
+                        }
+                });
 
         HookedEvents::AddHookedEvent(
                 "Function ProjectX.OnlineGamePopulation_X.GetPlaylistPopulations",
@@ -67,7 +88,8 @@ void ShowPlayerPopulation::onLoad() {
                 "Function ProjectX.PsyNetConnection_X.EventConnected",
                 [this](std::string eventName) {
                         // conveniently is called whenever you connect to psynet
-                        // which puts you in a great state to "StartMatchingmaking" / query matchmaking
+                        // which puts you in a great state to "StartMatchingmaking" / query
+                        // matchmaking
 
                         CHECK_NOW();
                 });
@@ -86,6 +108,8 @@ void ShowPlayerPopulation::onUnload() {
         // dont throw here
 }
 
+void SNAPSHOT_PLAYLIST_POSITIONS() {
+}
 /// <summary>
 /// This call usually includes ImGui code that is shown and rendered (repeatedly,
 /// on every frame rendered) when your plugin is selected in the plugin
@@ -112,9 +136,9 @@ void ShowPlayerPopulation::RenderSettings() {
 
         if (ImGui::Checkbox("SHOW ALL?", &show_all)) {
                 if (show_all) {
-                        show1 = show2 = show3 = show4 = show5 = show6 = true;
+                        slot1 = slot2 = slot3 = slot4 = slot5 = slot6 = true;
                 } else {
-                        show1 = show2 = show3 = show4 = show5 = show6 = false;
+                        slot1 = slot2 = slot3 = slot4 = slot5 = slot6 = false;
                 }
         }
 
@@ -125,6 +149,43 @@ void ShowPlayerPopulation::RenderSettings() {
                         showstats = false;
                 }
         }
+
+        if (ImGui::Button("SNAPSHOT PLAYLIST NUMBER POSITIONS")) {
+                SNAPSHOT_PLAYLIST_POSITIONS();
+        }
+
+        ImGui::Text(
+                "%d hours selected. (%d days, %d hours)",
+                hours_kept,
+                hours_kept / 24,
+                hours_kept % 24);
+        ImGui::SameLine(0.0f, 100.0f);
+        if (ImGui::Button("PRUNE DATA FILE?")) {
+                // prune the data file
+        }
+
+        // possibly just put this in a range of values?
+        ImGui::SliderScalar(
+                "How long should data be kept(hours)",
+                ImGuiDataType_U8,
+                &hours_kept,
+                &hours_min,
+                &hours_max,
+                "%d");
+        /*
+         * TODO: Add graphing
+         *       Add slider ability to select how long data should be kept
+         *          ... idk, 8 hours, to 7 days? (7x24 = 148 hours)
+         *       ... some tables for min/max/average over that time
+         *       a disclaimer definitely stating how the following is only based
+         *       on values that have been saved locally
+         *
+         *       On another note, a button that "snapshots" where things
+         *       are placed on the overlay, and checkboxes that enable/disable
+         *       movement of windows.
+         *
+         *
+         */
 }
 
 /// <summary>
@@ -158,11 +219,17 @@ void ShowPlayerPopulation::add_notifier(
 void ShowPlayerPopulation::init_datafile() {
         std::ofstream file {RECORD_POPULATION_FILE, std::ios::app};
         if (!file.good()) {
-                throw std::filesystem::filesystem_error("DATA FILE NOT GOOD! UNRECOVERABLE!~", std::error_code());
+                throw std::filesystem::filesystem_error(
+                        "DATA FILE NOT GOOD! UNRECOVERABLE!~",
+                        std::error_code());
         }
-        if (!std::filesystem::exists(RECORD_POPULATION_FILE) || std::filesystem::is_empty(RECORD_POPULATION_FILE)) {
+        if (!std::filesystem::exists(RECORD_POPULATION_FILE)
+            || std::filesystem::is_empty(RECORD_POPULATION_FILE)) {
                 csv::CSVWriter<std::ofstream> recordwriter {file};
-                std::vector<std::string>      header {"DATETIME", "TOTALPOPULATION", "TOTALPLAYERSONLINE"};
+                std::vector<std::string>      header {
+                        "DATETIME",
+                        "TOTALPOPULATION",
+                        "TOTALPLAYERSONLINE"};
 
                 // EASILY COPY THE HEADERS OVER
                 auto vv = std::views::values(bmhelper::playlist_ids_str);
@@ -175,7 +242,8 @@ void ShowPlayerPopulation::init_datafile() {
                 // go to last row
                 while (recordreader.read_row(row))
                         ;
-                // last_time = row["DATETIME"].get<std::chrono::time_point<std::chrono::system_clock>>();
+                // last_time =
+                // row["DATETIME"].get<std::chrono::time_point<std::chrono::system_clock>>();
                 std::string tmpdt = row["DATETIME"].get<std::string>();
                 last_time         = get_timepoint_from_str(tmpdt);
         }
@@ -208,7 +276,8 @@ void ShowPlayerPopulation::write_population() {
                                         {std::vformat(
                                                  "{}",
                                                  std::make_format_args(
-                                                         bmhelper::playlist_ids_str_spaced[element.first])),
+                                                         bmhelper::playlist_ids_str_spaced
+                                                                 [element.first])),
                                          n});
                         }
                 }
@@ -221,7 +290,9 @@ void ShowPlayerPopulation::write_population() {
                         begin(counts),
                         end(counts),
                         std::back_inserter(strs),
-                        [](const auto & elem) -> std::string { return std::to_string(elem); });
+                        [](const auto & elem) -> std::string {
+                                return std::to_string(elem);
+                        });
 
                 recordwriter << strs;
         }
@@ -243,7 +314,9 @@ void ShowPlayerPopulation::massage_data() {
 /// </summary>
 /// <returns>_now_ represented as a datetime string</returns>
 std::string ShowPlayerPopulation::get_current_datetime_str() {
-        const std::chrono::zoned_time t {std::chrono::current_zone(), std::chrono::system_clock::now()};
+        const std::chrono::zoned_time t {
+                std::chrono::current_zone(),
+                std::chrono::system_clock::now()};
         return std::vformat(DATETIME_FORMAT_STR, std::make_format_args(t));
 }
 
@@ -252,12 +325,14 @@ std::string ShowPlayerPopulation::get_current_datetime_str() {
 /// </summary>
 /// <param name="str">a string representation of the datetime</param>
 /// <returns>a time_point representing the string</returns>
-std::chrono::time_point<std::chrono::system_clock> ShowPlayerPopulation::get_timepoint_from_str(std::string str) {
+std::chrono::time_point<std::chrono::system_clock>
+        ShowPlayerPopulation::get_timepoint_from_str(std::string str) {
         std::chrono::utc_time<std::chrono::system_clock::duration> tmpd;
         std::istringstream                                         ss(str);
         ss >> std::chrono::parse(DATETIME_PARSE_STR, tmpd);
-        std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration> tmptp {
-                tmpd.time_since_epoch()};
+        std::chrono::
+                time_point<std::chrono::system_clock, std::chrono::system_clock::duration>
+                        tmptp {tmpd.time_since_epoch()};
         return tmptp;
 }
 
@@ -305,7 +380,8 @@ void ShowPlayerPopulation::OnClose() {
 };
 
 /// <summary>
-/// inspiration: https://stackoverflow.com/questions/64653747/how-to-center-align-text-horizontally
+/// inspiration:
+/// https://stackoverflow.com/questions/64653747/how-to-center-align-text-horizontally
 /// </summary>
 /// <param name="text">The text to center.</param>
 void ShowPlayerPopulation::center_imgui_text(const std::string & text) {
@@ -328,7 +404,7 @@ void ShowPlayerPopulation::center_imgui_text(const std::string & text) {
         }
 
         ImGui::SetCursorPosX(total_width_so_far + indent);
-        ImGui::Text(text.c_str());
+        ImGui::TextUnformatted(text.c_str());
 }
 
 /// <summary>
@@ -343,17 +419,21 @@ void ShowPlayerPopulation::Render() {
                 ImGui::Begin("Hey, cutie", NULL);
                 ImGui::SetWindowFontScale(1.2f);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
-                center_imgui_text(
-                        std::vformat("POPULATIONS! LAST UPDATED: {0:%r} {0:%D}", std::make_format_args(last_time))
-                                .c_str());
+                center_imgui_text(std::vformat(
+                                          "POPULATIONS! LAST UPDATED: {0:%r} {0:%D}",
+                                          std::make_format_args(last_time))
+                                          .c_str());
                 ImGui::NewLine();
                 ImGui::Indent(20.0f);
                 ImGui::BeginColumns("populationnums", 2, ImGuiColumnsFlags_NoResize);
                 // ImGui::colum
                 for (const std::pair<std::string, int> & playlist : playlist_population) {
-                        ImGui::TextUnformatted(std::vformat("{}:", std::make_format_args(playlist.first)).c_str());
+                        ImGui::TextUnformatted(
+                                std::vformat("{}:", std::make_format_args(playlist.first))
+                                        .c_str());
                         ImGui::NextColumn();
-                        center_imgui_text(std::vformat("{}", std::make_format_args(playlist.second)));
+                        center_imgui_text(
+                                std::vformat("{}", std::make_format_args(playlist.second)));
                         ImGui::NextColumn();
                 }
                 ImGui::EndColumns();
@@ -372,53 +452,63 @@ void ShowPlayerPopulation::Render() {
         topY                   = (ImGui::GetIO().DisplaySize.y / 4.817) - WIN_HEIGHT;
         botX                   = (ImGui::GetIO().DisplaySize.x / 5.688) + (530 - WIN_WIDTH);
         botY                   = (ImGui::GetIO().DisplaySize.y / 2.051) - WIN_HEIGHT;
-        if (show1) {
+        if (slot1) {
                 ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_Always);
                 ImGui::SetNextWindowPos(ImVec2(topX, topY), ImGuiCond_Always);
-                ImGui::Begin("show1", &show1, ImGuiWindowFlags_NoTitleBar);
+                ImGui::Begin("show1", &slot1, ImGuiWindowFlags_NoTitleBar);
                 onepos = ImGui::GetWindowPos();
-                ImGui::SetWindowPos(
-                        ImVec2(std::max(0.0f, std::min(onepos.x, ImGui::GetIO().DisplaySize.x)),
-                               std::max(0.0f, std::min(onepos.y, ImGui::GetIO().DisplaySize.y))));
+                ImGui::SetWindowPos(ImVec2(
+                        std::max(0.0f, std::min(onepos.x, ImGui::GetIO().DisplaySize.x)),
+                        std::max(0.0f, std::min(onepos.y, ImGui::GetIO().DisplaySize.y))));
                 onebar = ImGui::GetWindowSize();
                 ImGui::End();
         }
-        if (show2) {
+        if (slot2) {
                 ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_Always);
                 ImGui::SetNextWindowPos(ImVec2(botX, botY), ImGuiCond_Always);
-                ImGui::Begin("show2", &show2, ImGuiWindowFlags_NoTitleBar);
+                ImGui::Begin("show2", &slot2, ImGuiWindowFlags_NoTitleBar);
                 twopos = ImGui::GetWindowPos();
                 twobar = ImGui::GetWindowSize();
                 ImGui::End();
         }
-        if (show3) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+        if (slot3) {
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(30, 30), ImGuiCond_FirstUseEver);
-                ImGui::Begin("show3", &show3, ImGuiWindowFlags_NoTitleBar);
+                ImGui::Begin("show3", &slot3, ImGuiWindowFlags_NoTitleBar);
                 threepos = ImGui::GetWindowPos();
                 threebar = ImGui::GetWindowSize();
                 ImGui::End();
         }
-        if (show4) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowPos(ImVec2(WIN_HEIGHT, WIN_HEIGHT), ImGuiCond_FirstUseEver);
-                ImGui::Begin("show4", &show4, ImGuiWindowFlags_NoTitleBar);
+        if (slot4) {
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowPos(
+                        ImVec2(WIN_HEIGHT, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
+                ImGui::Begin("show4", &slot4, ImGuiWindowFlags_NoTitleBar);
                 fourpos = ImGui::GetWindowPos();
                 fourbar = ImGui::GetWindowSize();
                 ImGui::End();
         }
-        if (show5) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+        if (slot5) {
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(50, 50), ImGuiCond_FirstUseEver);
-                ImGui::Begin("show5", &show5, ImGuiWindowFlags_NoTitleBar);
+                ImGui::Begin("show5", &slot5, ImGuiWindowFlags_NoTitleBar);
                 fivepos = ImGui::GetWindowPos();
                 fivebar = ImGui::GetWindowSize();
                 ImGui::End();
         }
-        if (show6) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+        if (slot6) {
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(60, 60), ImGuiCond_FirstUseEver);
-                ImGui::Begin("show6", &show6, ImGuiWindowFlags_NoTitleBar);
+                ImGui::Begin("show6", &slot6, ImGuiWindowFlags_NoTitleBar);
                 sixpos = ImGui::GetWindowPos();
                 sixbar = ImGui::GetWindowSize();
                 ImGui::End();
@@ -436,7 +526,11 @@ void ShowPlayerPopulation::Render() {
                         std::make_format_args(twopos.x, twopos.y, twobar.x, twobar.y)));
                 center_imgui_text(std::vformat(
                         "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
-                        std::make_format_args(threepos.x, threepos.y, threebar.x, threebar.y)));
+                        std::make_format_args(
+                                threepos.x,
+                                threepos.y,
+                                threebar.x,
+                                threebar.y)));
                 center_imgui_text(std::vformat(
                         "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
                         std::make_format_args(fourpos.x, fourpos.y, fourbar.x, fourbar.y)));
@@ -484,7 +578,8 @@ bool ShowPlayerPopulation::IsActiveOverlay() {
 /// (aka RocketLeague and BakkesMod windows)
 /// </summary>
 /// <returns>True/False for if bakkesmod should block input. Could be
-/// `return ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard;`</returns>
+/// `return ImGui::GetIO().WantCaptureMouse ||
+/// ImGui::GetIO().WantCaptureKeyboard;`</returns>
 bool ShowPlayerPopulation::ShouldBlockInput() {
         return false;
 };
