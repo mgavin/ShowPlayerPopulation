@@ -14,7 +14,7 @@
 
 const std::string ShowPlayerPopulation::cmd_prefix = "rppd_";
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.7.8", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.12.8", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
 /// <summary>
@@ -27,16 +27,6 @@ void ShowPlayerPopulation::onLoad() {
 
         init_datafile();
 
-        // so tired...
-        LOG("{}", last_time);
-
-        using namespace std::chrono_literals;
-        std::chrono::zoned_time clk {std::chrono::current_zone(), std::chrono::system_clock::now()};
-        if ((clk.get_local_time() - last_time.get_local_time()) < 5min) {
-                // I wanted to have some sort of "timeout" to basically keep people from
-                // spamming their shit?
-                LOG("TOO SOON!");
-        }
         // cvarManager->registerCvar(
         //         cmd_prefix + "enable_topscroll",
         //         "0",
@@ -49,15 +39,18 @@ void ShowPlayerPopulation::onLoad() {
                 "Flag to determine if the overlay should be shown",
                 false);
 
-        show_overlay_cvar.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
-                if (is_overlay_open != new_value.getBoolValue()) {
-                        gameWrapper->Execute([this](GameWrapper * gw) {
-                                // look, sometimes cvarManager just gets fucking
-                                // lost.
-                                cvarManager->executeCommand("togglemenu ShowPlayerPopulation", false);
-                        });
-                }
-        });
+        show_overlay_cvar.addOnValueChanged(
+                [this](std::string old_value, CVarWrapper new_value) {
+                        if (is_overlay_open != new_value.getBoolValue()) {
+                                gameWrapper->Execute([this](GameWrapper * gw) {
+                                        // look, sometimes cvarManager just gets fucking
+                                        // lost.
+                                        cvarManager->executeCommand(
+                                                "togglemenu ShowPlayerPopulation",
+                                                false);
+                                });
+                        }
+                });
 
         CVarWrapper hrs_cvar = cvarManager->registerCvar(
                 cmd_prefix + "hours",
@@ -82,7 +75,7 @@ void ShowPlayerPopulation::onLoad() {
 
         HookedEvents::AddHookedEvent(
                 "Function ProjectX.PsyNetConnection_X.EventDisconnected",
-                [this](std::string eventName) {
+                [](std::string eventName) {
                         // conveniently stops the playlist population query
                 });
         HookedEvents::AddHookedEvent(
@@ -92,6 +85,7 @@ void ShowPlayerPopulation::onLoad() {
                         // which puts you in a great state to "StartMatchingmaking" / query
                         // matchmaking
 
+                        // ... it might not anymore -_-
                         CHECK_NOW();
                 });
 
@@ -178,23 +172,27 @@ void ShowPlayerPopulation::RenderSettings() {
         }
 
         /*
-         * On another note, a button that "snapshots" where things *are placed on the overlay,
-         * and checkboxes that enable disable movement of windows.
+         * On another note, a button that "snapshots" where things *are placed on the
+         * overlay, and checkboxes that enable disable movement of windows.
          */
         if (ImGui::Button("SNAPSHOT PLAYLIST NUMBER POSITIONS")) {
                 SNAPSHOT_PLAYLIST_POSITIONS();
         }
 
-        ImGui::Text("%d hours selected. (%d days, %d hours)", *hours_kept, *hours_kept / 24, *hours_kept % 24);
+        ImGui::Text(
+                "%d hours selected. (%d days, %d hours)",
+                *hours_kept,
+                *hours_kept / 24,
+                *hours_kept % 24);
         ImGui::SameLine(0.0f, 100.0f);
         if (ImGui::Button("PRUNE DATA FILE?")) {
                 // prune the data file
                 massage_data();
         }
 
-        // possibly just put this in a range of values? int values[] = {corresponding amount of hours / days}
-        // under the hood, it could still just be a flat number... the purpose would be for being "easily readable"...
-        // fk it for now
+        // possibly just put this in a range of values? int values[] = {corresponding amount
+        // of hours / days} under the hood, it could still just be a flat number... the
+        // purpose would be for being "easily readable"... fk it for now
         ImGui::SliderScalar(
                 "How long should data be kept(hours)",
                 ImGuiDataType_U8,
@@ -203,7 +201,8 @@ void ShowPlayerPopulation::RenderSettings() {
                 &hours_max,
                 "%d");
 
-        center_imgui_text("DISCLAIMER:  THE FOLLOWING IS ONLY BASED ON VALUES THAT HAVE BEEN SAVED LOCALLY");
+        center_imgui_text("DISCLAIMER:  THE FOLLOWING IS ONLY BASED ON VALUES THAT HAVE "
+                          "BEEN SAVED LOCALLY");
         if (ImGui::CollapsingHeader("Data")) {
                 ImGui::TextUnformatted("Double-click on plot to re-orient data.");
                 // ImPlot
@@ -214,8 +213,10 @@ void ShowPlayerPopulation::RenderSettings() {
                         "pop",
                         ImVec2(-1, 0),
                         ImPlotFlags_Default,
-                        ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMax | ImPlotAxisFlags_LockMin,
-                        ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMax | ImPlotAxisFlags_LockMin);
+                        ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMax
+                                | ImPlotAxisFlags_LockMin,
+                        ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMax
+                                | ImPlotAxisFlags_LockMin);
                 ImPlot::EndPlot();
         }
         /*
@@ -258,18 +259,26 @@ void ShowPlayerPopulation::add_notifier(
 }
 
 void ShowPlayerPopulation::init_datafile() {
-        if (!std::filesystem::exists(gameWrapper->GetDataFolder().append("ShowPlayerPopulation/"))) {
+        if (!std::filesystem::exists(
+                    gameWrapper->GetDataFolder().append("ShowPlayerPopulation/"))) {
                 // create plugin data directory if it doesn't exist
-                std::filesystem::create_directory(gameWrapper->GetDataFolder().append("ShowPlayerPopulation/"));
+                std::filesystem::create_directory(
+                        gameWrapper->GetDataFolder().append("ShowPlayerPopulation/"));
         }
 
         std::ofstream file {RECORD_POPULATION_FILE, std::ios::app};
         if (!file.good()) {
-                throw std::filesystem::filesystem_error("DATA FILE NOT GOOD! UNRECOVERABLE!~", std::error_code());
+                throw std::filesystem::filesystem_error(
+                        "DATA FILE NOT GOOD! UNRECOVERABLE!~",
+                        std::error_code());
         }
-        if (!std::filesystem::exists(RECORD_POPULATION_FILE) || std::filesystem::is_empty(RECORD_POPULATION_FILE)) {
+        if (!std::filesystem::exists(RECORD_POPULATION_FILE)
+            || std::filesystem::is_empty(RECORD_POPULATION_FILE)) {
                 csv::CSVWriter<std::ofstream> recordwriter {file};
-                std::vector<std::string>      header {"DATETIME", "TOTALPOPULATION", "TOTALPLAYERSONLINE"};
+                std::vector<std::string>      header {
+                        "DATETIME",
+                        "TOTALPOPULATION",
+                        "TOTALPLAYERSONLINE"};
 
                 // EASILY COPY THE HEADERS OVER
                 auto vv = std::views::values(bmhelper::playlist_ids_str);
@@ -328,26 +337,44 @@ void ShowPlayerPopulation::GET_DEFAULT_POP_NUMBER_PLACEMENTS() {
                         &x6,
                         &y6);
                 if (screensize.X == dispx && screensize.Y == dispy) {
-                        slot1_init_pos.x = static_cast<float>(x1), slot1_init_pos.y = static_cast<float>(y1);
-                        slot2_init_pos.x = static_cast<float>(x2), slot2_init_pos.y = static_cast<float>(y2);
-                        slot3_init_pos.x = static_cast<float>(x3), slot3_init_pos.y = static_cast<float>(y3);
-                        slot4_init_pos.x = static_cast<float>(x4), slot4_init_pos.y = static_cast<float>(y4);
-                        slot5_init_pos.x = static_cast<float>(x5), slot5_init_pos.y = static_cast<float>(y5);
-                        slot6_init_pos.x = static_cast<float>(x6), slot6_init_pos.y = static_cast<float>(y6);
+                        slot1_init_pos.x = static_cast<float>(x1),
+                        slot1_init_pos.y = static_cast<float>(y1);
+                        slot2_init_pos.x = static_cast<float>(x2),
+                        slot2_init_pos.y = static_cast<float>(y2);
+                        slot3_init_pos.x = static_cast<float>(x3),
+                        slot3_init_pos.y = static_cast<float>(y3);
+                        slot4_init_pos.x = static_cast<float>(x4),
+                        slot4_init_pos.y = static_cast<float>(y4);
+                        slot5_init_pos.x = static_cast<float>(x5),
+                        slot5_init_pos.y = static_cast<float>(y5);
+                        slot6_init_pos.x = static_cast<float>(x6),
+                        slot6_init_pos.y = static_cast<float>(y6);
                 }
         }
 
         // TRY TO "SCALE"!
-        const float final_scale  = gameWrapper->GetDisplayScale() * gameWrapper->GetInterfaceScale();
-        slot1_init_pos          *= final_scale;
-        slot2_init_pos          *= final_scale;
-        slot3_init_pos          *= final_scale;
-        slot4_init_pos          *= final_scale;
-        slot5_init_pos          *= final_scale;
-        slot6_init_pos          *= final_scale;
+        const float final_scale =
+                gameWrapper->GetDisplayScale() * gameWrapper->GetInterfaceScale();
+        slot1_init_pos *= final_scale;
+        slot2_init_pos *= final_scale;
+        slot3_init_pos *= final_scale;
+        slot4_init_pos *= final_scale;
+        slot5_init_pos *= final_scale;
+        slot6_init_pos *= final_scale;
 }
 
 void ShowPlayerPopulation::CHECK_NOW() {
+        using namespace std::chrono_literals;
+        std::chrono::zoned_time clk {
+                std::chrono::current_zone(),
+                std::chrono::system_clock::now()};
+        if ((clk.get_local_time() - last_time.get_local_time()) < 5min) {
+                // I wanted to have some sort of "timeout" to basically keep people from
+                // spamming their shit?
+                LOG("TOO SOON!");
+                return;
+        }
+
         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
         if (mw) {
                 mw.StartMatchmaking(PlaylistCategory::CASUAL);
@@ -368,13 +395,15 @@ void ShowPlayerPopulation::write_population() {
                 counts.push_back(mw.GetTotalPlayersOnline());
                 playlist_population.push_back({"Total Players Online", counts.back()});
                 for (const auto & element : bmhelper::playlist_ids_str) {
-                        counts.push_back(mw.GetPlayerCount(static_cast<PlaylistIds>(element.first)));
+                        counts.push_back(
+                                mw.GetPlayerCount(static_cast<PlaylistIds>(element.first)));
                         if (int n = counts.back(); n > 0) {
                                 playlist_population.push_back(
                                         {std::vformat(
                                                  "{}",
                                                  std::make_format_args(
-                                                         bmhelper::playlist_ids_str_spaced[element.first])),
+                                                         bmhelper::playlist_ids_str_spaced
+                                                                 [element.first])),
                                          n});
                         }
                 }
@@ -387,7 +416,9 @@ void ShowPlayerPopulation::write_population() {
                         begin(counts),
                         end(counts),
                         std::back_inserter(strs),
-                        [](const auto & elem) -> std::string { return std::to_string(elem); });
+                        [](const auto & elem) -> std::string {
+                                return std::to_string(elem);
+                        });
 
                 recordwriter << strs;
         }
@@ -414,7 +445,9 @@ void ShowPlayerPopulation::massage_data() {
 /// </summary>
 /// <returns>_now_ represented as a datetime string</returns>
 std::string ShowPlayerPopulation::get_current_datetime_str() {
-        const std::chrono::zoned_time t {std::chrono::current_zone(), std::chrono::system_clock::now()};
+        const std::chrono::zoned_time t {
+                std::chrono::current_zone(),
+                std::chrono::system_clock::now()};
         return std::vformat(DATETIME_FORMAT_STR, std::make_format_args(t));
 }
 
@@ -423,12 +456,14 @@ std::string ShowPlayerPopulation::get_current_datetime_str() {
 /// </summary>
 /// <param name="str">a string representation of the datetime</param>
 /// <returns>a time_point representing the string</returns>
-std::chrono::time_point<std::chrono::system_clock> ShowPlayerPopulation::get_timepoint_from_str(std::string str) {
+std::chrono::time_point<std::chrono::system_clock>
+        ShowPlayerPopulation::get_timepoint_from_str(std::string str) {
         std::chrono::utc_time<std::chrono::system_clock::duration> tmpd;
         std::istringstream                                         ss(str);
         ss >> std::chrono::parse(DATETIME_PARSE_STR, tmpd);
-        std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration> tmptp {
-                tmpd.time_since_epoch()};
+        std::chrono::
+                time_point<std::chrono::system_clock, std::chrono::system_clock::duration>
+                        tmptp {tmpd.time_since_epoch()};
         return tmptp;
 }
 
@@ -515,17 +550,21 @@ void ShowPlayerPopulation::Render() {
                 ImGui::Begin("Hey, cutie", NULL);
                 ImGui::SetWindowFontScale(1.2f);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
-                center_imgui_text(
-                        std::vformat("POPULATIONS! LAST UPDATED: {0:%r} {0:%D}", std::make_format_args(last_time))
-                                .c_str());
+                center_imgui_text(std::vformat(
+                                          "POPULATIONS! LAST UPDATED: {0:%r} {0:%D}",
+                                          std::make_format_args(last_time))
+                                          .c_str());
                 ImGui::NewLine();
                 ImGui::Indent(20.0f);
                 ImGui::BeginColumns("populationnums", 2, ImGuiColumnsFlags_NoResize);
                 // ImGui::colum
                 for (const std::pair<std::string, int> & playlist : playlist_population) {
-                        ImGui::TextUnformatted(std::vformat("{}:", std::make_format_args(playlist.first)).c_str());
+                        ImGui::TextUnformatted(
+                                std::vformat("{}:", std::make_format_args(playlist.first))
+                                        .c_str());
                         ImGui::NextColumn();
-                        center_imgui_text(std::vformat("{}", std::make_format_args(playlist.second)));
+                        center_imgui_text(
+                                std::vformat("{}", std::make_format_args(playlist.second)));
                         ImGui::NextColumn();
                 }
                 ImGui::EndColumns();
@@ -541,7 +580,9 @@ void ShowPlayerPopulation::Render() {
         // THE ImGuiCond_Always ON POSITIONS RIGHT NOW IS FOR TESTING!!!!!!!!!!!
         // LATER THEY WILL BE ImGuiCond_FirstUseEver
         if (slot1) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot1_init_pos, ImGuiCond_FirstUseEver);
                 ImGui::Begin("show1", &slot1, ImGuiWindowFlags_NoTitleBar);
                 onepos = ImGui::GetWindowPos();
@@ -549,7 +590,9 @@ void ShowPlayerPopulation::Render() {
                 ImGui::End();
         }
         if (slot2) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot2_init_pos, ImGuiCond_FirstUseEver);
                 ImGui::Begin("show2", &slot2, ImGuiWindowFlags_NoTitleBar);
                 twopos = ImGui::GetWindowPos();
@@ -557,7 +600,9 @@ void ShowPlayerPopulation::Render() {
                 ImGui::End();
         }
         if (slot3) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot3_init_pos, ImGuiCond_FirstUseEver);
                 ImGui::Begin("show3", &slot3, ImGuiWindowFlags_NoTitleBar);
                 threepos = ImGui::GetWindowPos();
@@ -565,7 +610,9 @@ void ShowPlayerPopulation::Render() {
                 ImGui::End();
         }
         if (slot4) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot4_init_pos, ImGuiCond_FirstUseEver);
                 ImGui::Begin("show4", &slot4, ImGuiWindowFlags_NoTitleBar);
                 fourpos = ImGui::GetWindowPos();
@@ -573,7 +620,9 @@ void ShowPlayerPopulation::Render() {
                 ImGui::End();
         }
         if (slot5) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot5_init_pos, ImGuiCond_FirstUseEver);
                 ImGui::Begin("show5", &slot5, ImGuiWindowFlags_NoTitleBar);
                 fivepos = ImGui::GetWindowPos();
@@ -581,7 +630,9 @@ void ShowPlayerPopulation::Render() {
                 ImGui::End();
         }
         if (slot6) {
-                ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(
+                        ImVec2(WIN_WIDTH, WIN_HEIGHT),
+                        ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot6_init_pos, ImGuiCond_FirstUseEver);
                 ImGui::Begin("show6", &slot6, ImGuiWindowFlags_NoTitleBar);
                 sixpos = ImGui::GetWindowPos();
@@ -601,7 +652,11 @@ void ShowPlayerPopulation::Render() {
                         std::make_format_args(twopos.x, twopos.y, twobar.x, twobar.y)));
                 center_imgui_text(std::vformat(
                         "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
-                        std::make_format_args(threepos.x, threepos.y, threebar.x, threebar.y)));
+                        std::make_format_args(
+                                threepos.x,
+                                threepos.y,
+                                threebar.x,
+                                threebar.y)));
                 center_imgui_text(std::vformat(
                         "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
                         std::make_format_args(fourpos.x, fourpos.y, fourbar.x, fourbar.y)));
