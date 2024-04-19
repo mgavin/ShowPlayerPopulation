@@ -5,6 +5,7 @@
 #include "bakkesmod/plugin/pluginsettingswindow.h"
 #include "bakkesmod/plugin/pluginwindow.h"
 
+#include "bmhelper.h"
 #include "imgui.h"
 
 /*
@@ -43,11 +44,13 @@ private:
         bool in_game_menu     = false;
 
         // data
-        std::vector<std::pair<std::string, int>> playlist_population;
+        const std::vector<std::string> SHOWN_PLAYLIST_POPS =
+                {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
+        std::map<PlaylistId, int> playlist_population;
 
-        const int            hours_min  = 0;
-        const int            hours_max  = 168;
-        std::shared_ptr<int> hours_kept = std::make_shared<int>(24);
+        const int hours_min  = 0;
+        const int hours_max  = 168;
+        int       hours_kept = 24;
 
         // flags for showing numbers above playlists
         // ordered 1-6, top left to bottom right
@@ -77,6 +80,7 @@ private:
         std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(std::string);
         void                                               SET_WHICH_MENU_I_AM_IN();
         void                                               center_imgui_text(const std::string & text);
+        void                                               add_underline(ImColor col_);
 
         void add_notifier(
                 std::string                                   cmd_name,
