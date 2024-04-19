@@ -11,9 +11,17 @@
 #include "HookedEvents.h"
 #include "Logger.h"
 
+/*
+ * todo: alpha release:
+ *  - make pruning work
+ *  - correctly handle options for showing in menu/playlist/etc
+ *  - take out superfluous options used for testing
+ *
+ */
+
 const std::string ShowPlayerPopulation::cmd_prefix = "rppd_";
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.12.8", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.18.8", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
 /// <summary>
@@ -77,11 +85,17 @@ void ShowPlayerPopulation::onLoad() {
                 });
         HookedEvents::AddHookedEvent(
                 "Function ProjectX.PsyNetConnection_X.EventConnected",
-                [this](std::string eventName) { CHECK_NOW(); });
+                [this](std::string eventName) { DO_CHECK = TRUE; });
 
         HookedEvents::AddHookedEvent(
                 "Function TAGame.StatusObserver_MenuStack_TA.HandleMenuChange",
-                [this](std::string eventName) { SET_WHICH_MENU_I_AM_IN(); });
+                [this](std::string eventName) {
+                        SET_WHICH_MENU_I_AM_IN();
+                        if (in_main_menu && DO_CHECK) {
+                                // roundabout way to try and avoid the "set playlist" error.
+                                CHECK_NOW();
+                        }
+                });
         SET_WHICH_MENU_I_AM_IN();
 }
 
@@ -350,15 +364,11 @@ void ShowPlayerPopulation::CHECK_NOW() {
                 // return;
         }
 
-        gameWrapper->SetTimeout(
-                [this](GameWrapper * gw) {
-                        MatchmakingWrapper mw = gw->GetMatchmakingWrapper();
-                        if (mw) {
-                                mw.StartMatchmaking(PlaylistCategory::CASUAL);
-                                mw.CancelMatchmaking();
-                        }
-                },
-                2.0f);
+        MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
+        if (mw) {
+                mw.StartMatchmaking(PlaylistCategory::CASUAL);
+                mw.CancelMatchmaking();
+        }
 }
 
 void ShowPlayerPopulation::write_population() {
@@ -531,17 +541,14 @@ void ShowPlayerPopulation::Render() {
                                 .c_str());
                 ImGui::NewLine();
                 ImGui::Indent(20.0f);
-                ImGui::BeginColumns("totalpopcol", 2, ImGuiColumnsFlags_NoResize);
-                ImGui::TextUnformatted("Total Players Online:");
-                ImGui::NextColumn();
-                center_imgui_text(std::to_string(TOTAL_POP));
-                ImGui::NextColumn();
-                ImGui::EndColumns();
-
                 if (ImGui::GetWindowWidth() <= (ImGui::GetIO().DisplaySize.x / 2.0f)) {
                         // less than or equal to half of the width of the screen
                         // = "vertical layout"
                         ImGui::BeginColumns("populationnums_vert", 2, ImGuiColumnsFlags_NoResize);
+                        ImGui::TextUnformatted("Total Players Online:");
+                        ImGui::NextColumn();
+                        center_imgui_text(std::to_string(TOTAL_POP));
+                        ImGui::NextColumn();
                         for (const std::string playlists : SHOWN_PLAYLIST_POPS) {
                                 for (const PlaylistId & id : bmhelper::PlaylistCategories[playlists]) {
                                         std::string playliststr = bmhelper::playlist_ids_str_spaced[id];
@@ -577,6 +584,15 @@ void ShowPlayerPopulation::Render() {
                         //////// fucking preprocess -_-
                         ///////
                         std::map<std::string, std::vector<std::pair<int, int>>> pops_horiz;
+                        ImGui::BeginColumns(
+                                "pop_horiz_tot",
+                                12,
+                                ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
+                        ImGui::TextUnformatted("Total Players Online:");
+                        ImGui::NextColumn();
+                        center_imgui_text(std::to_string(TOTAL_POP));
+                        ImGui::NextColumn();
+                        ImGui::EndColumns();
                         // im so tired
                         ImGui::BeginColumns("populationnums_horiz", 12, ImGuiColumnsFlags_NoResize);
                         for (int line = 0; line < mx; ++line) {

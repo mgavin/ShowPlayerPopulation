@@ -42,6 +42,7 @@ private:
         bool in_main_menu     = false;
         bool in_playlist_menu = false;
         bool in_game_menu     = false;
+        bool DO_CHECK         = false;
 
         // data
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
