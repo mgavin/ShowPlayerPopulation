@@ -9,6 +9,7 @@
 #include "implot.h"
 
 #include "HookedEvents.h"
+#include "internal/csv_row.hpp"
 #include "Logger.h"
 
 /*
@@ -21,7 +22,7 @@
 
 const std::string ShowPlayerPopulation::cmd_prefix = "rppd_";
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.18.8", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.24.8", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
 /// <summary>
@@ -64,6 +65,14 @@ void ShowPlayerPopulation::onLoad() {
         hrs_cvar.addOnValueChanged(
                 [this](std::string old_value, CVarWrapper new_value) { hours_kept = new_value.getIntValue(); });
 
+        CVarWrapper keep_cvar = cvarManager->registerCvar(
+                cmd_prefix + "keep_indefinitely",
+                "0",
+                "Should data be kept indefinitely?",
+                false);
+        hrs_cvar.addOnValueChanged(
+                [this](std::string old_value, CVarWrapper new_value) { keep_all_data = new_value.getBoolValue(); });
+
         HookedEvents::AddHookedEvent(
                 "Function ProjectX.OnlineGamePopulation_X.GetPlaylistPopulations",
                 // conveniently stops after disconnected
@@ -85,7 +94,7 @@ void ShowPlayerPopulation::onLoad() {
                 });
         HookedEvents::AddHookedEvent(
                 "Function ProjectX.PsyNetConnection_X.EventConnected",
-                [this](std::string eventName) { DO_CHECK = TRUE; });
+                [this](std::string eventName) { DO_CHECK = true; });
 
         HookedEvents::AddHookedEvent(
                 "Function TAGame.StatusObserver_MenuStack_TA.HandleMenuChange",
@@ -94,6 +103,7 @@ void ShowPlayerPopulation::onLoad() {
                         if (in_main_menu && DO_CHECK) {
                                 // roundabout way to try and avoid the "set playlist" error.
                                 CHECK_NOW();
+                                DO_CHECK = false;
                         }
                 });
         SET_WHICH_MENU_I_AM_IN();
@@ -192,12 +202,20 @@ void ShowPlayerPopulation::RenderSettings() {
         ImGui::SameLine(100.0f, 200.0f);
         if (ImGui::Button("PRUNE DATA FILE?")) {
                 // prune the data file
-                massage_data();
+                prepare_data();
         }
 
-        // possibly just put this in a range of values? int values[] = {corresponding amount
-        // of hours / days} under the hood, it could still just be a flat number... the
-        // purpose would be for being "easily readable"... fk it for now
+        CVarWrapper keep_data_cvar = cvarManager->getCvar(cmd_prefix + "keep_indefinitely");
+        bool        bkeep          = keep_data_cvar.getBoolValue();
+        ImGui::SameLine(200.0f, 200.0f);
+        if (ImGui::Checkbox("KEEP DATA INDEFINITELY", &bkeep)) {
+                keep_data_cvar.setValue(bkeep);
+        }
+
+        if (bkeep) {
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+        }
         CVarWrapper hrs_cvar = cvarManager->getCvar(cmd_prefix + "hours");
         int         hrs      = hrs_cvar.getIntValue();
         ImGui::SliderScalar(
@@ -208,6 +226,10 @@ void ShowPlayerPopulation::RenderSettings() {
                 &hours_max,
                 "%d");
         hrs_cvar.setValue(hrs);
+        if (bkeep) {
+                ImGui::PopItemFlag();
+                ImGui::PopStyleVar();
+        }
 
         center_imgui_text("DISCLAIMER:  THE FOLLOWING IS ONLY BASED ON VALUES THAT HAVE "
                           "BEEN SAVED LOCALLY");
@@ -225,15 +247,8 @@ void ShowPlayerPopulation::RenderSettings() {
                         ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMax | ImPlotAxisFlags_LockMin);
                 ImPlot::EndPlot();
         }
-        /*
-         * TODO: Add graphing
-         *       Add slider ability to select how long data should be kept
-         *          ... idk, 8 hours, to 7 days? (7x24 = 148 hours)
-         *       ... some tables for min/max/average over that time
-         *
-         *
-         *
-         */
+
+        // ADD A BIG OL' DISCLAIMER-EXPLANATION DOWN HERE ON HOW THINGS WORK!
 }
 
 /// <summary>
@@ -376,8 +391,6 @@ void ShowPlayerPopulation::write_population() {
         csv::CSVWriter<std::ofstream> recordwriter {file};
         MatchmakingWrapper            mw = gameWrapper->GetMatchmakingWrapper();
 
-        playlist_population.clear();
-
         if (mw) {
                 std::vector<int> counts;
                 counts.push_back(mw.GetTotalPopulation());
@@ -385,9 +398,6 @@ void ShowPlayerPopulation::write_population() {
                 for (const auto & element : bmhelper::playlist_ids_str) {
                         int playlist_pop = mw.GetPlayerCount(static_cast<PlaylistIds>(element.first));
                         counts.push_back(playlist_pop);
-                        if (playlist_pop > 0) {
-                                playlist_population[element.first] = playlist_pop;
-                        }
                 }
 
                 std::vector<std::string> strs;
@@ -402,7 +412,7 @@ void ShowPlayerPopulation::write_population() {
 
                 recordwriter << strs;
         }
-        massage_data();
+        prepare_data();
 }
 
 /// <summary>
@@ -412,12 +422,61 @@ void ShowPlayerPopulation::write_population() {
 ///
 /// ... if it's necessary
 /// </summary>
-void ShowPlayerPopulation::massage_data() {
-        // prunejabi
+void ShowPlayerPopulation::prepare_data() {
+        if (!keep_all_data) {
+                prune_data();
+        }
 
-        // prepare it to be shown
+        // prepare it to be shown for graphing purposes
+        // ... this should be for all purposes really o, o
         std::ifstream  file {RECORD_POPULATION_FILE};
         csv::CSVReader recordreader {file};
+        csv::CSVRow    row;
+
+        while (recordreader.read_row(row)) {
+                // stash them
+
+                // total is the 0th spot BECAUSE MAGIC
+        }
+
+        // populate this with the last row's data
+        std::map<PlaylistId, int> playlist_population;
+        for (const auto & str : recordreader.get_col_names()) {
+                playlist_population[bmhelper::playlist_str_ids[str]] = row[str].get<int>();
+        }
+
+        // prepare data to be shown for when the window goes "horizontal"
+        pops_horiz.clear();
+        // get max number of lines
+        size_t mxlines = 0;
+        for (const auto & neat : SHOWN_PLAYLIST_POPS) {
+                mxlines = std::max(bmhelper::PlaylistCategories[neat].size(), mxlines);
+        }
+
+        // put those lines into a data structure
+        // (this is solely done to avoid empty lines.)
+
+        for (int line = 0; line < mxlines; ++line) {
+                for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
+                        if (line >= bmhelper::PlaylistCategories[playstr].size()) {
+                                continue;
+                        } else {
+                                PlaylistId id  = bmhelper::PlaylistCategories[playstr][line];
+                                int        pop = playlist_population[id];
+                                if (pop < 1) {
+                                        continue;
+                                }
+                                pops_horiz[playstr].push_back({id, pop});
+                        }
+                }
+        }
+}
+
+/// <summary>
+/// Puts the data file in a state that adheres to specifications
+/// Namely that all recorded events fit within a certain timeframe.
+/// </summary>
+void prune_data() {
 }
 
 /// <summary>
@@ -549,41 +608,30 @@ void ShowPlayerPopulation::Render() {
                         ImGui::NextColumn();
                         center_imgui_text(std::to_string(TOTAL_POP));
                         ImGui::NextColumn();
-                        for (const std::string playlists : SHOWN_PLAYLIST_POPS) {
-                                for (const PlaylistId & id : bmhelper::PlaylistCategories[playlists]) {
-                                        std::string playliststr = bmhelper::playlist_ids_str_spaced[id];
-                                        int         pop         = playlist_population[id];
-                                        if (pop < 1) {
-                                                continue;
-                                        }
-                                        ImGui::TextUnformatted(
-                                                std::vformat("{}:", std::make_format_args(playliststr)).c_str());
-                                        ImGui::NextColumn();
-                                        center_imgui_text(std::vformat("{}", std::make_format_args(pop)));
-                                        ImGui::NextColumn();
+
+                        std::vector<std::pair<PlaylistId, int>> playlist_pops;
+
+                        for (const auto & pop : pops_horiz) {
+                                for (const auto & popv : pop.second) {
+                                        playlist_pops.push_back({popv.first, popv.second});
                                 }
-                                ImGui::NewLine();
+                        }
+
+                        for (const std::pair<PlaylistId, int> & ppops : playlist_pops) {
+                                std::string playliststr = bmhelper::playlist_ids_str_spaced[ppops.first];
+                                int         pop         = ppops.second;
+
+                                ImGui::TextUnformatted(std::vformat("{}:", std::make_format_args(playliststr)).c_str());
                                 ImGui::NextColumn();
-                                ImGui::NewLine();
+                                center_imgui_text(std::vformat("{}", std::make_format_args(pop)));
                                 ImGui::NextColumn();
                         }
+
                         ImGui::EndColumns();
                 } else {
                         // greater than half of the width of the screen
-                        // "horizontal layout
-                        size_t mx = 0;
+                        // "horizontal layout"
 
-                        // get max number of lines
-                        for (const auto & neat : SHOWN_PLAYLIST_POPS) {
-                                mx = std::max(bmhelper::PlaylistCategories[neat].size(), mx);
-                        }
-
-                        // try to write out each one
-                        // 12 ... because 6 playlists, 6 numbers
-
-                        //////// fucking preprocess -_-
-                        ///////
-                        std::map<std::string, std::vector<std::pair<int, int>>> pops_horiz;
                         ImGui::BeginColumns(
                                 "pop_horiz_tot",
                                 12,
@@ -593,22 +641,22 @@ void ShowPlayerPopulation::Render() {
                         center_imgui_text(std::to_string(TOTAL_POP));
                         ImGui::NextColumn();
                         ImGui::EndColumns();
-                        // im so tired
+
+                        size_t mxlines = 0;
+                        for (const auto & x : pops_horiz) {
+                                mxlines = std::max(mxlines, x.second.size());
+                        }
                         ImGui::BeginColumns("populationnums_horiz", 12, ImGuiColumnsFlags_NoResize);
-                        for (int line = 0; line < mx; ++line) {
+                        for (int line = 0; line < mxlines; ++line) {
                                 for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
-                                        if (line >= bmhelper::PlaylistCategories[playstr].size()) {
+                                        if (line >= pops_horiz[playstr].size()) {
+                                                // nothing to show :(
                                                 ImGui::NextColumn();
                                                 ImGui::NextColumn();
                                                 continue;
                                         } else {
-                                                PlaylistId id  = bmhelper::PlaylistCategories[playstr][line];
-                                                int        pop = playlist_population[id];
-                                                if (pop < 1) {
-                                                        ImGui::NextColumn();
-                                                        ImGui::NextColumn();
-                                                        continue;
-                                                }
+                                                PlaylistId id  = pops_horiz[playstr][line].first;
+                                                int        pop = pops_horiz[playstr][line].second;
                                                 ImGui::TextUnformatted(
                                                         std::vformat(
                                                                 "{}:",

@@ -143,6 +143,14 @@ namespace bmhelper {
                 {           PlaylistId::GForceFrenzy,            "GForceFrenzy"},
         };
 
+        std::map<std::string, PlaylistId> playlist_str_ids = []() -> std::map<std::string, PlaylistId> {
+                std::map<std::string, PlaylistId> laziness;
+                std::for_each(begin(playlist_ids_str), end(playlist_ids_str), [&](const auto & p) {
+                        laziness[p.second] = p.first;
+                });
+                return laziness;
+        }();
+
         // More familiar names for playlist ids
         std::map<PlaylistId, std::string> playlist_ids_str_spaced = {
                 {                PlaylistId::Unknown,                      "Unknown"},

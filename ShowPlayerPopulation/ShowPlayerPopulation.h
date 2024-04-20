@@ -47,7 +47,25 @@ private:
         // data
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
-        std::map<PlaylistId, int> playlist_population;
+        std::map<std::string, std::vector<std::pair<PlaylistId, int>>> pops_horiz;
+
+        struct token {
+                using sc     = std::chrono::system_clock;
+                using time_p = std::chrono::time_point<sc, sc::duration>;
+                time_p                    tp;
+                int                       total_pop;
+                std::map<PlaylistId, int> playlist_pop;
+        };
+        // put in a priority queue to save operations?
+        // fucking have to read the whole csv all the time anyway
+        std::vector<token> bank;
+        bool               keep_all_data = false;
+
+        /*
+         * To make pruning work: put everything in a fucking queue
+         * check the queue for times, keep track of the queue, update file as necessary
+         *
+         */
 
         const int hours_min  = 0;
         const int hours_max  = 168;
@@ -76,7 +94,8 @@ private:
         void                                               init_datafile();
         void                                               CHECK_NOW();
         void                                               write_population();
-        void                                               massage_data();
+        void                                               prepare_data();
+        void                                               prune_data();
         std::string                                        get_current_datetime_str();
         std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(std::string);
         void                                               SET_WHICH_MENU_I_AM_IN();
