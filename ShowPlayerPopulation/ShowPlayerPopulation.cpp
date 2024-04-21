@@ -15,8 +15,9 @@
 /*
  * todo: alpha release:
  *  - make pruning work
- *  - correctly handle options for showing in menu/playlist/etc
+ *  - graph
  *  - take out superfluous options used for testing
+ *       .   make a new branch to clean up for "release"
  *
  */
 
@@ -33,7 +34,17 @@ void ShowPlayerPopulation::onLoad() {
         _globalCvarManager        = cvarManager;
         HookedEvents::gameWrapper = gameWrapper;
 
+        ImGuiIO & io = ImGui::GetIO();
+        // overlay_font_22 = io.Fonts->AddFontFromFileTTF(
+        //         (gameWrapper->GetDataFolder().append("fonts/SourceSerifPro-Black.ttf")).string().c_str(),
+        //         22.0f);
+        // overlay_font_18 = io.Fonts->AddFontFromFileTTF(
+        //         (gameWrapper->GetDataFolder().append("fonts/SourceSerifPro-Black.ttf")).string().c_str(),
+        //         18.0f);
+
         init_datafile();
+
+        // init_cvars();
 
         // cvarManager->registerCvar(
         //         cmd_prefix + "enable_topscroll",
@@ -42,7 +53,7 @@ void ShowPlayerPopulation::onLoad() {
         //         population");
 
         CVarWrapper show_overlay_cvar = cvarManager->registerCvar(
-                cmd_prefix + "show_overlay",
+                cmd_prefix + "flag_show_overlay",
                 "0",
                 "Flag to determine if the overlay should be shown",
                 false);
@@ -56,9 +67,38 @@ void ShowPlayerPopulation::onLoad() {
                         });
                 }
         });
+        CVarWrapper lock_overlay_cv =
+                cvarManager->registerCvar(cmd_prefix + "flag_lock_overlay", "0", "Flag for locking the overlay", false);
+        lock_overlay_cv.addOnValueChanged(
+                [this](std::string old_value, CVarWrapper new_value) { lock_overlay = new_value.getBoolValue(); });
+
+        CVarWrapper show_menu_cv = cvarManager->registerCvar(
+                cmd_prefix + "flag_show_in_menu",
+                "0",
+                "Flag for showing the overlay in the main menu",
+                false);
+        show_menu_cv.addOnValueChanged(
+                [this](std::string old_value, CVarWrapper new_value) { show_in_main_menu = new_value.getBoolValue(); });
+
+        CVarWrapper show_playlist_menu_cv = cvarManager->registerCvar(
+                cmd_prefix + "flag_show_in_playlist_menu",
+                "0",
+                "Flag for showing the overlay during playlist selection",
+                false);
+        show_playlist_menu_cv.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
+                show_in_playlist_menu = new_value.getBoolValue();
+        });
+
+        CVarWrapper show_game_menu_cv = cvarManager->registerCvar(
+                cmd_prefix + "flag_show_in_game_menu",
+                "0",
+                "Flag for showing the overlay in game while paused",
+                false);
+        show_game_menu_cv.addOnValueChanged(
+                [this](std::string old_value, CVarWrapper new_value) { show_in_game_menu = new_value.getBoolValue(); });
 
         CVarWrapper hrs_cvar = cvarManager->registerCvar(
-                cmd_prefix + "hours",
+                cmd_prefix + "hours_kept",
                 "24",
                 "Number of hours to keep of population data.",
                 false);
@@ -70,7 +110,7 @@ void ShowPlayerPopulation::onLoad() {
                 "0",
                 "Should data be kept indefinitely?",
                 false);
-        hrs_cvar.addOnValueChanged(
+        keep_cvar.addOnValueChanged(
                 [this](std::string old_value, CVarWrapper new_value) { keep_all_data = new_value.getBoolValue(); });
 
         HookedEvents::AddHookedEvent(
@@ -86,6 +126,8 @@ void ShowPlayerPopulation::onLoad() {
                                 }
                         }
                 });
+
+        // init_hooked_events();
 
         HookedEvents::AddHookedEvent(
                 "Function ProjectX.PsyNetConnection_X.EventDisconnected",
@@ -115,6 +157,16 @@ void ShowPlayerPopulation::onLoad() {
 void ShowPlayerPopulation::onUnload() {
         // destroy things
         // dont throw here
+
+        // basically clear the "queue"
+
+        // so a de- queue will exist while the plugin exists, making it easier to prune
+        // than constantly opening and closing the csv file, reading and writing the whole file
+
+        // pruning will only happen on plugin/game close, unless the prune data button is clicked
+        // when pruning, first prune the data structure, then just overwrite the data file itself
+        prune_data();
+        write_data_to_file();
 }
 
 void ShowPlayerPopulation::SNAPSHOT_PLAYLIST_POSITIONS() {
@@ -145,6 +197,23 @@ void ShowPlayerPopulation::SNAPSHOT_PLAYLIST_POSITIONS() {
                         static_cast<int>(sixpos.y)))
              << std::endl;
 }
+
+/// <summary>
+/// This is for helping with IMGUI stuff
+///
+/// I don't know why center_imgui_text was made a member function
+///
+/// copied from: https://github.com/ocornut/imgui/discussions/3862
+/// </summary>
+/// <param name="width">total width of items</param>
+/// <param name="alignment">where on the line to align</param>
+static void AlignForWidth(float width, float alignment = 0.5f) {
+        ImGuiStyle & style = ImGui::GetStyle();
+        float        avail = ImGui::GetContentRegionAvail().x;
+        float        off   = (avail - width) * alignment;
+        if (off > 0.0f)
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+}
 /// <summary>
 /// This call usually includes ImGui code that is shown and rendered (repeatedly,
 /// on every frame rendered) when your plugin is selected in the plugin
@@ -152,8 +221,6 @@ void ShowPlayerPopulation::SNAPSHOT_PLAYLIST_POSITIONS() {
 /// settings, this will be used instead.
 /// </summary>
 void ShowPlayerPopulation::RenderSettings() {
-        // ... needs a horizontal variant
-
         // for imgui plugin window
         // CVarWrapper ticker       = cvarManager->getCvar("rppd_enable_topscroll");
         // bool        top_scroller = ticker.getBoolValue();
@@ -161,7 +228,7 @@ void ShowPlayerPopulation::RenderSettings() {
         //        ticker.setValue(top_scroller);
         //}
 
-        CVarWrapper shoverlay  = cvarManager->getCvar(cmd_prefix + "show_overlay");
+        CVarWrapper shoverlay  = cvarManager->getCvar(cmd_prefix + "flag_show_overlay");
         bool        bshoverlay = shoverlay.getBoolValue();
         if (ImGui::Checkbox("Show the overlay?", &bshoverlay)) {
                 shoverlay.setValue(bshoverlay);
@@ -170,8 +237,28 @@ void ShowPlayerPopulation::RenderSettings() {
         // show in main menu, show in game, show in playlist menu | flags
         // still need color / transparency /location locking options for the overlays
 
-        if (ImGui::Button("CHECK NOW")) {
+        if (ImGui::Button("CHECK POPULATION NOW")) {
                 gameWrapper->Execute([this](GameWrapper * gw) { CHECK_NOW(); });
+        }
+
+        if (ImGui::Checkbox("Lock overlay?", &lock_overlay)) {
+                CVarWrapper cvw = cvarManager->getCvar(cmd_prefix + "flag_lock_overlay");
+                cvw.setValue(lock_overlay);
+        }
+
+        if (ImGui::Checkbox("Show in main menu?", &show_in_main_menu)) {
+                CVarWrapper cvw = cvarManager->getCvar(cmd_prefix + "flag_show_in_menu");
+                cvw.setValue(show_in_main_menu);
+        }
+        ImGui::SameLine(0, 50.0f);
+        if (ImGui::Checkbox("Show in playlist menu?", &show_in_playlist_menu)) {
+                CVarWrapper cvw = cvarManager->getCvar(cmd_prefix + "flag_show_in_playlist_menu");
+                cvw.setValue(show_in_playlist_menu);
+        }
+        ImGui::SameLine(0, 50.0f);
+        if (ImGui::Checkbox("Show during pause menu in game?", &show_in_game_menu)) {
+                CVarWrapper cvw = cvarManager->getCvar(cmd_prefix + "flag_show_in_game_menu");
+                cvw.setValue(show_in_game_menu);
         }
 
         if (ImGui::Checkbox("SHOW ALL?", &show_all)) {
@@ -199,24 +286,62 @@ void ShowPlayerPopulation::RenderSettings() {
         }
 
         ImGui::Text("%d hours selected. (%d days, %d hours)", hours_kept, hours_kept / 24, hours_kept % 24);
-        ImGui::SameLine(100.0f, 200.0f);
-        if (ImGui::Button("PRUNE DATA FILE?")) {
-                // prune the data file
-                prepare_data();
-        }
 
+        ImGui::SameLine(100.0f, 200.0f);
         CVarWrapper keep_data_cvar = cvarManager->getCvar(cmd_prefix + "keep_indefinitely");
         bool        bkeep          = keep_data_cvar.getBoolValue();
-        ImGui::SameLine(200.0f, 200.0f);
         if (ImGui::Checkbox("KEEP DATA INDEFINITELY", &bkeep)) {
                 keep_data_cvar.setValue(bkeep);
+        }
+        if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                ImGui::TextUnformatted(
+                        "IF UNSET, THIS WILL TAKE EFFECT WHEN THE PLUGIN UNLOADS\n (LIKE WHEN THE GAME IS CLOSED)");
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
         }
 
         if (bkeep) {
                 ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
         }
-        CVarWrapper hrs_cvar = cvarManager->getCvar(cmd_prefix + "hours");
+
+        ImGui::SameLine(300.0f, 200.0f);
+        static bool popup = false;
+        if (ImGui::Button("PRUNE DATA FILE?")) {
+                popup = true;
+                ImGui::OpenPopup("PRUNE_DATA_CONFIRM");
+                prepare_data();
+        }
+        if (ImGui::BeginPopupModal(
+                    "PRUNE_DATA_CONFIRM",
+                    &popup,
+                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration)) {
+                ImGui::SetWindowSize(ImVec2(300.0f, 80.0f), ImGuiCond_Always);
+                center_imgui_text("Are you sure you want to prune your data?");
+                ImGuiStyle & style  = ImGui::GetStyle();
+                float        width  = 0.0f;
+                // width              += ImGui::CalcTextSize("yes").x;
+                width              += 80.0f;  // fixed size button 1
+                width              += style.ItemSpacing.x;
+                width              += 50.0f;  // because of the sameline + spacing
+                                              // width               += ImGui::CalcTextSize("no").x;
+                width              += 80.0f;  // fixed size button 2
+                AlignForWidth(width, 0.5f);
+                if (ImGui::Button("yes", ImVec2(80, 20))) {
+                        ImGui::CloseCurrentPopup();
+                        print_deque_data();
+                        prune_data();
+                }
+                ImGui::SameLine(0.0f, 50.0f);
+                if (ImGui::Button("no", ImVec2(80, 20))) {
+                        ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+        }
+
+        CVarWrapper hrs_cvar = cvarManager->getCvar(cmd_prefix + "hours_kept");
         int         hrs      = hrs_cvar.getIntValue();
         ImGui::SliderScalar(
                 "How long should data be kept(hours)",
@@ -225,6 +350,7 @@ void ShowPlayerPopulation::RenderSettings() {
                 &hours_min,
                 &hours_max,
                 "%d");
+        hrs = std::max(hours_min, std::min(hours_max, hrs));
         hrs_cvar.setValue(hrs);
         if (bkeep) {
                 ImGui::PopItemFlag();
@@ -279,6 +405,21 @@ void ShowPlayerPopulation::add_notifier(
         cvarManager->registerNotifier(cmd_prefix + cmd_name, do_func, desc, PERMISSIONS);
 }
 
+void ShowPlayerPopulation::print_deque_data() {
+        // for (const auto & t : bank) {
+        const auto & t = bank.back();
+        LOG(std::vformat("{}", std::make_format_args(t.zt)));
+        LOG("{}", t.total_pop);
+        std::string str_tot = "";
+        for (const auto & p : t.playlist_pop) {
+                str_tot +=
+                        std::vformat("{}: {}\n", std::make_format_args(bmhelper::playlist_ids_str[p.first], p.second));
+        }
+        LOG(str_tot);
+        //                break;
+        // }
+}
+
 void ShowPlayerPopulation::init_datafile() {
         if (!std::filesystem::exists(gameWrapper->GetDataFolder().append("ShowPlayerPopulation/"))) {
                 // create plugin data directory if it doesn't exist
@@ -290,6 +431,7 @@ void ShowPlayerPopulation::init_datafile() {
                 throw std::filesystem::filesystem_error("DATA FILE NOT GOOD! UNRECOVERABLE!~", std::error_code());
         }
         if (!std::filesystem::exists(RECORD_POPULATION_FILE) || std::filesystem::is_empty(RECORD_POPULATION_FILE)) {
+                // a first run of the plugin
                 csv::CSVWriter<std::ofstream> recordwriter {file};
                 std::vector<std::string>      header {"DATETIME", "TOTALPOPULATION", "TOTALPLAYERSONLINE"};
 
@@ -298,18 +440,39 @@ void ShowPlayerPopulation::init_datafile() {
                 std::copy(begin(vv), end(vv), std::back_inserter(header));
                 recordwriter << header;
         } else {
+                // the data file exists.
                 csv::CSVReader recordreader {RECORD_POPULATION_FILE.string()};
                 csv::CSVRow    row;
 
-                // go to last row
-                while (recordreader.read_row(row))
-                        ;
-                // last_time =
-                // row["DATETIME"].get<std::chrono::time_point<std::chrono::system_clock>>();
+                // read in all rows to be kept in memory
+                const std::vector<std::string> header = std::move(recordreader.get_col_names());
+                while (recordreader.read_row(row)) {
+                        std::map<PlaylistId, int> playlist_pop;
+                        for (const auto & str : header) {
+                                if (bmhelper::playlist_str_ids.contains(str)) {
+                                        playlist_pop[bmhelper::playlist_str_ids[str]] = row[str].get<int>();
+                                }
+                        }
+                        bank.emplace_back(token {
+                                .zt =
+                                        std::chrono::zoned_time {
+                                                                 std::chrono::current_zone(),
+                                                                 get_timepoint_from_str(row["DATETIME"].get<std::string>())},
+                                .total_pop    = row["TOTALPOPULATION"].get<int>(),
+                                .playlist_pop = playlist_pop
+                        });
+                }
+                std::sort(begin(bank), end(bank), [](const token & t1, const token & t2) {
+                        return t1.zt.get_local_time().time_since_epoch() < t2.zt.get_local_time().time_since_epoch();
+                });
+
                 std::string tmpdt = row["DATETIME"].get<std::string>();
                 last_time         = get_timepoint_from_str(tmpdt);
         }
 
+        print_deque_data();
+
+        // unworking,yet
         GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 }
 
@@ -381,7 +544,10 @@ void ShowPlayerPopulation::CHECK_NOW() {
 
         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
         if (mw) {
-                mw.StartMatchmaking(PlaylistCategory::CASUAL);
+                // EXTRAS because (I believe) it gets around the "Please select a playlist" notification popping up...
+                // maybe since there's no "EXTRAS" playlist category anymore? ... When I had this at casual, it was
+                // causing an annoying error popup sometimes.
+                mw.StartMatchmaking(PlaylistCategory::EXTRAS);
                 mw.CancelMatchmaking();
         }
 }
@@ -412,6 +578,7 @@ void ShowPlayerPopulation::write_population() {
 
                 recordwriter << strs;
         }
+        file.flush();
         prepare_data();
 }
 
@@ -420,12 +587,9 @@ void ShowPlayerPopulation::write_population() {
 ///
 /// put the data in a representable format.
 ///
-/// ... if it's necessary
 /// </summary>
 void ShowPlayerPopulation::prepare_data() {
-        if (!keep_all_data) {
-                prune_data();
-        }
+        prune_data();
 
         // prepare it to be shown for graphing purposes
         // ... this should be for all purposes really o, o
@@ -434,19 +598,22 @@ void ShowPlayerPopulation::prepare_data() {
         csv::CSVRow    row;
 
         while (recordreader.read_row(row)) {
-                // stash them
-
-                // total is the 0th spot BECAUSE MAGIC
         }
 
         // populate this with the last row's data
         std::map<PlaylistId, int> playlist_population;
         for (const auto & str : recordreader.get_col_names()) {
-                playlist_population[bmhelper::playlist_str_ids[str]] = row[str].get<int>();
+                if (bmhelper::playlist_str_ids.contains(str)) {
+                        playlist_population[bmhelper::playlist_str_ids[str]] = row[str].get<int>();
+                }
         }
 
         // prepare data to be shown for when the window goes "horizontal"
-        pops_horiz.clear();
+
+        // clear persistent data :}
+        population_data.clear();
+        TOTAL_IN_GAME_POP = 0;
+
         // get max number of lines
         size_t mxlines = 0;
         for (const auto & neat : SHOWN_PLAYLIST_POPS) {
@@ -463,10 +630,23 @@ void ShowPlayerPopulation::prepare_data() {
                         } else {
                                 PlaylistId id  = bmhelper::PlaylistCategories[playstr][line];
                                 int        pop = playlist_population[id];
-                                if (pop < 1) {
+                                if (pop < 10) {
+                                        // Why less than 10?
+                                        // Developers tend to jump into modes at their whim
+                                        // The population numbers are still tracked no matter who is in the mode, so you
+                                        // would see 1 or 2 people in a mode that isn't available to the public.
+                                        // I'm guessing, if they don't want to show population data to begin with, maybe
+                                        // they don't want people stalking those people? like, "why are they blah blah
+                                        // when blah blah?" ... idk. It just doesn't seem very relevant to track the 1
+                                        // or 2 or 9 people playing in an inaccessible mode. .... except FaceIt for some
+                                        // reason.
+
+                                        // and 10 ... because... to give an opportunity to catch enough people in the
+                                        // custom training editor
                                         continue;
                                 }
-                                pops_horiz[playstr].push_back({id, pop});
+                                population_data[playstr].push_back({id, pop});
+                                TOTAL_IN_GAME_POP += pop;
                         }
                 }
         }
@@ -476,7 +656,10 @@ void ShowPlayerPopulation::prepare_data() {
 /// Puts the data file in a state that adheres to specifications
 /// Namely that all recorded events fit within a certain timeframe.
 /// </summary>
-void prune_data() {
+void ShowPlayerPopulation::prune_data() {
+        if (keep_all_data) {
+                return;
+        }
 }
 
 /// <summary>
@@ -494,7 +677,7 @@ std::string ShowPlayerPopulation::get_current_datetime_str() {
 /// <param name="str">a string representation of the datetime</param>
 /// <returns>a time_point representing the string</returns>
 std::chrono::time_point<std::chrono::system_clock> ShowPlayerPopulation::get_timepoint_from_str(std::string str) {
-        std::chrono::utc_time<std::chrono::system_clock::duration> tmpd;
+        std::chrono::sys_time<std::chrono::system_clock::duration> tmpd;
         std::istringstream                                         ss(str);
         ss >> std::chrono::parse(DATETIME_PARSE_STR, tmpd);
         std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration> tmptp {
@@ -511,13 +694,13 @@ void ShowPlayerPopulation::SET_WHICH_MENU_I_AM_IN() {
         if (msw) {
                 std::string menu_name = msw.GetTopMenu();
                 if (menu_name == "RootMenuMovie") {
-                        LOG("IN MAIN MENU");
+                        // set when on the main menu
                         in_main_menu = true;
                 } else if (menu_name == "PlayMenuV4Movie") {
-                        LOG("IN PLAYLIST MENU");
+                        // set after hitting [Play] on the main menu
                         in_playlist_menu = true;
                 } else if (menu_name == "MidGameMenuMovie") {
-                        LOG("IN GAME MENU");
+                        // set when opening up the menu during a game
                         in_game_menu = true;
                 }
         }
@@ -587,14 +770,20 @@ void ShowPlayerPopulation::center_imgui_text(const std::string & text) {
 /// (ImGui) Code called while rendering your menu window
 /// </summary>
 void ShowPlayerPopulation::Render() {
-        if (in_main_menu || in_game_menu) {
+        if ((in_main_menu && show_in_main_menu) || (in_game_menu && show_in_game_menu)
+            || (in_playlist_menu && show_in_playlist_menu)) {
                 // SHOW THE DAMN NUMBERS, JIM!
                 ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
                 ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-                ImGui::Begin("Hey, cutie", NULL);
-                ImGui::SetWindowFontScale(1.2f);
+                ImGuiWindowFlags flags = ImGuiWindowFlags_None | ImGuiWindowFlags_NoCollapse;
+                if (lock_overlay) {
+                        flags |= ImGuiWindowFlags_NoInputs;
+                }
+                ImGui::Begin("Hey, cutie", NULL, flags);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
+                ImGui::SetWindowFontScale(1.3f);
+                // ImGui::PushFont(overlay_font_22);
                 center_imgui_text(
                         std::vformat("POPULATIONS! LAST UPDATED: {0:%r} {0:%D}", std::make_format_args(last_time))
                                 .c_str());
@@ -608,15 +797,21 @@ void ShowPlayerPopulation::Render() {
                         ImGui::NextColumn();
                         center_imgui_text(std::to_string(TOTAL_POP));
                         ImGui::NextColumn();
+                        ImGui::TextUnformatted("Total Population in a Game:");
+                        ImGui::NextColumn();
+                        center_imgui_text(std::to_string(TOTAL_IN_GAME_POP));
+                        ImGui::NextColumn();
 
                         std::vector<std::pair<PlaylistId, int>> playlist_pops;
 
-                        for (const auto & pop : pops_horiz) {
-                                for (const auto & popv : pop.second) {
+                        for (const auto & str : SHOWN_PLAYLIST_POPS) {
+                                auto pop = population_data[str];
+                                for (const auto & popv : pop) {
                                         playlist_pops.push_back({popv.first, popv.second});
                                 }
                         }
 
+                        // ImGui::PushFont(overlay_font_18);
                         for (const std::pair<PlaylistId, int> & ppops : playlist_pops) {
                                 std::string playliststr = bmhelper::playlist_ids_str_spaced[ppops.first];
                                 int         pop         = ppops.second;
@@ -626,7 +821,7 @@ void ShowPlayerPopulation::Render() {
                                 center_imgui_text(std::vformat("{}", std::make_format_args(pop)));
                                 ImGui::NextColumn();
                         }
-
+                        // ImGui::PopFont();
                         ImGui::EndColumns();
                 } else {
                         // greater than half of the width of the screen
@@ -634,29 +829,34 @@ void ShowPlayerPopulation::Render() {
 
                         ImGui::BeginColumns(
                                 "pop_horiz_tot",
-                                12,
+                                6,
                                 ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
                         ImGui::TextUnformatted("Total Players Online:");
                         ImGui::NextColumn();
                         center_imgui_text(std::to_string(TOTAL_POP));
                         ImGui::NextColumn();
+                        ImGui::TextUnformatted("Total Population in a Game:");
+                        ImGui::NextColumn();
+                        center_imgui_text(std::to_string(TOTAL_IN_GAME_POP));
+                        ImGui::NextColumn();
                         ImGui::EndColumns();
 
                         size_t mxlines = 0;
-                        for (const auto & x : pops_horiz) {
+                        for (const auto & x : population_data) {
                                 mxlines = std::max(mxlines, x.second.size());
                         }
+                        // ImGui::PushFont(overlay_font_18);
                         ImGui::BeginColumns("populationnums_horiz", 12, ImGuiColumnsFlags_NoResize);
                         for (int line = 0; line < mxlines; ++line) {
                                 for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
-                                        if (line >= pops_horiz[playstr].size()) {
+                                        if (line >= population_data[playstr].size()) {
                                                 // nothing to show :(
                                                 ImGui::NextColumn();
                                                 ImGui::NextColumn();
                                                 continue;
                                         } else {
-                                                PlaylistId id  = pops_horiz[playstr][line].first;
-                                                int        pop = pops_horiz[playstr][line].second;
+                                                PlaylistId id  = population_data[playstr][line].first;
+                                                int        pop = population_data[playstr][line].second;
                                                 ImGui::TextUnformatted(
                                                         std::vformat(
                                                                 "{}:",
@@ -664,18 +864,27 @@ void ShowPlayerPopulation::Render() {
                                                                         bmhelper::playlist_ids_str_spaced[id]))
                                                                 .c_str());
                                                 ImGui::NextColumn();
-                                                center_imgui_text(std::vformat("{}", std::make_format_args(pop)));
+                                                // MANUAL CENTERING? WTF ... the width isnt being correctly set.
+                                                std::string str = std::vformat("{}", std::make_format_args(pop));
+                                                ImGui::SetCursorPosX(
+                                                        ImGui::GetCursorPosX()
+                                                        + ((ImGui::GetContentRegionAvailWidth()
+                                                            - ImGui::CalcTextSize(str.c_str()).x)
+                                                           * 0.5));
+                                                ImGui::TextUnformatted(str.c_str());
                                                 ImGui::NextColumn();
                                         }
                                 }
                         }
+                        // ImGui::PopFont();
                         ImGui::EndColumns();
                 }
+                // ImGui::PopFont();
                 ImGui::PopStyleColor();
                 ImGui::PopStyleColor();
                 ImGui::End();
-        } else if (in_playlist_menu) {
         }
+
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
         ImVec2      onebar, twobar, threebar, fourbar, fivebar, sixbar;
         const float WIN_HEIGHT = 40.0f;

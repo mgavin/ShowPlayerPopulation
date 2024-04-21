@@ -35,31 +35,41 @@ private:
         const std::string DATETIME_PARSE_STR  = "%FT%T%z";
 
         std::chrono::zoned_time<std::chrono::system_clock::duration> last_time {std::chrono::current_zone()};
-        int                                                          TOTAL_POP = 0;
+        int                                                          TOTAL_POP         = 0;
+        int                                                          TOTAL_IN_GAME_POP = 0;
 
         // flags for different points in the plugin
-        bool is_overlay_open  = false;
-        bool in_main_menu     = false;
-        bool in_playlist_menu = false;
-        bool in_game_menu     = false;
-        bool DO_CHECK         = false;
+        bool is_overlay_open       = false;
+        bool lock_overlay          = false;
+        bool in_main_menu          = false;
+        bool in_playlist_menu      = false;
+        bool in_game_menu          = false;
+        bool show_in_main_menu     = false;
+        bool show_in_playlist_menu = false;
+        bool show_in_game_menu     = false;
+        bool DO_CHECK              = false;
+
+        ImFont * overlay_font_18 = nullptr;
+        ImFont * overlay_font_22 = nullptr;
 
         // data
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
-        std::map<std::string, std::vector<std::pair<PlaylistId, int>>> pops_horiz;
+        std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
 
         struct token {
                 using sc     = std::chrono::system_clock;
                 using time_p = std::chrono::time_point<sc, sc::duration>;
-                time_p                    tp;
-                int                       total_pop;
-                std::map<PlaylistId, int> playlist_pop;
+                std::chrono::zoned_time<sc::duration> zt;
+                int                                   total_pop;
+                std::map<PlaylistId, int>             playlist_pop;
         };
-        // put in a priority queue to save operations?
+        // put in a double ended queue to save operations?
         // fucking have to read the whole csv all the time anyway
-        std::vector<token> bank;
-        bool               keep_all_data = false;
+        std::deque<token> bank;
+
+        // std::priority_queue<std::chrono::sys_time, token> neato;
+        bool keep_all_data = false;
 
         /*
          * To make pruning work: put everything in a fucking queue
@@ -90,8 +100,12 @@ private:
         bool showstats;
         bool curiouser;
 
+        void print_deque_data();
+
         // member functions
         void                                               init_datafile();
+        void                                               init_cvars();
+        void                                               init_hooked_events();
         void                                               CHECK_NOW();
         void                                               write_population();
         void                                               prepare_data();

@@ -143,13 +143,61 @@ namespace bmhelper {
                 {           PlaylistId::GForceFrenzy,            "GForceFrenzy"},
         };
 
-        std::map<std::string, PlaylistId> playlist_str_ids = []() -> std::map<std::string, PlaylistId> {
-                std::map<std::string, PlaylistId> laziness;
-                std::for_each(begin(playlist_ids_str), end(playlist_ids_str), [&](const auto & p) {
-                        laziness[p.second] = p.first;
-                });
-                return laziness;
-        }();
+        std::map<std::string, PlaylistId> playlist_str_ids = {
+                {                "Unknown",                 PlaylistId::Unknown},
+                {                 "Casual",                  PlaylistId::Casual},
+                {                   "Duel",                    PlaylistId::Duel},
+                {                "Doubles",                 PlaylistId::Doubles},
+                {               "Standard",                PlaylistId::Standard},
+                {                  "Chaos",                   PlaylistId::Chaos},
+                {           "PrivateMatch",            PlaylistId::PrivateMatch},
+                {                 "Season",                  PlaylistId::Season},
+                {     "OfflineSplitscreen",      PlaylistId::OfflineSplitscreen},
+                {               "Training",                PlaylistId::Training},
+                {         "RankedSoloDuel",          PlaylistId::RankedSoloDuel},
+                {      "RankedTeamDoubles",       PlaylistId::RankedTeamDoubles},
+                {         "RankedStandard",          PlaylistId::RankedStandard},
+                {       "SnowDayPromotion",        PlaylistId::SnowDayPromotion},
+                {           "Experimental",            PlaylistId::Experimental},
+                {      "BasketballDoubles",       PlaylistId::BasketballDoubles},
+                {                 "Rumble",                  PlaylistId::Rumble},
+                {               "Workshop",                PlaylistId::Workshop},
+                {      "UGCTrainingEditor",       PlaylistId::UGCTrainingEditor},
+                {            "UGCTraining",             PlaylistId::UGCTraining},
+                {             "Tournament",              PlaylistId::Tournament},
+                {               "Breakout",                PlaylistId::Breakout},
+                {               "LANMatch",                PlaylistId::LANMatch},
+                {       "TenthAnniversary",        PlaylistId::TenthAnniversary},
+                {                 "FaceIt",                  PlaylistId::FaceIt},
+                {"RankedBasketballDoubles", PlaylistId::RankedBasketballDoubles},
+                {           "RankedRumble",            PlaylistId::RankedRumble},
+                {         "RankedBreakout",          PlaylistId::RankedBreakout},
+                {          "RankedSnowDay",           PlaylistId::RankedSnowDay},
+                {            "HauntedBall",             PlaylistId::HauntedBall},
+                {              "BeachBall",               PlaylistId::BeachBall},
+                {                  "Rugby",                   PlaylistId::Rugby},
+                {         "AutoTournament",          PlaylistId::AutoTournament},
+                {             "RocketLabs",              PlaylistId::RocketLabs},
+                {                "RumShot",                 PlaylistId::RumShot},
+                {                "GodBall",                 PlaylistId::GodBall},
+                {               "CoopVsAI",                PlaylistId::CoopVsAI},
+                {             "BoomerBall",              PlaylistId::BoomerBall},
+                {         "GodBallDoubles",          PlaylistId::GodBallDoubles},
+                {         "SpecialSnowDay",          PlaylistId::SpecialSnowDay},
+                {               "Football",                PlaylistId::Football},
+                {                  "Cubic",                   PlaylistId::Cubic},
+                {         "TacticalRumble",          PlaylistId::TacticalRumble},
+                {           "SpringLoaded",            PlaylistId::SpringLoaded},
+                {             "SpeedDemon",              PlaylistId::SpeedDemon},
+                {               "RumbleBM",                PlaylistId::RumbleBM},
+                {               "Knockout",                PlaylistId::Knockout},
+                {             "Thirdwheel",              PlaylistId::Thirdwheel},
+                {          "MagnusFutball",           PlaylistId::MagnusFutball},
+                {          "GodBallSpooky",           PlaylistId::GodBallSpooky},
+                {        "GodBallRicochet",         PlaylistId::GodBallRicochet},
+                {            "CubicSpooky",             PlaylistId::CubicSpooky},
+                {           "GForceFrenzy",            PlaylistId::GForceFrenzy},
+        };
 
         // More familiar names for playlist ids
         std::map<PlaylistId, std::string> playlist_ids_str_spaced = {
