@@ -34,10 +34,6 @@ private:
         const std::string DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
         const std::string DATETIME_PARSE_STR  = "%FT%T%z";
 
-        std::chrono::zoned_time<std::chrono::system_clock::duration> last_time {std::chrono::current_zone()};
-        int                                                          TOTAL_POP         = 0;
-        int                                                          TOTAL_IN_GAME_POP = 0;
-
         // flags for different points in the plugin
         bool is_overlay_open       = false;
         bool lock_overlay          = false;
@@ -51,24 +47,35 @@ private:
 
         ImFont * overlay_font_18 = nullptr;
         ImFont * overlay_font_22 = nullptr;
-
+        ImColor  col_black       = ImColor {
+                ImVec4 {0.0f, 0.0f, 0.0f, 1.0f}
+        };
         // data
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
+        int                                                            TOTAL_IN_GAME_POP = 0;
 
         struct token {
-                using sc     = std::chrono::system_clock;
-                using time_p = std::chrono::time_point<sc, sc::duration>;
+                using sc = std::chrono::system_clock;
                 std::chrono::zoned_time<sc::duration> zt;
                 int                                   total_pop;
-                std::map<PlaylistId, int>             playlist_pop;
+                int                       total_players_online;  // I've never seen it be unequal to total_pop
+                std::map<PlaylistId, int> playlist_pop;
         };
-        // put in a double ended queue to save operations?
-        // fucking have to read the whole csv all the time anyway
+        // idk why it's called a bank
+        // a bank full of tokens
+        // it holds all the data during the operation of the plugin
+        // ... instead of reading in and out of a file
+        // would be neat to separate out an interface
+        // and that would take desining another class to basically
+        // -> record, -> write -> read -> save... one class implementation would read / write to the file for every
+        // operation; another implementation would just use the queue...
+        // but I'm not doing that right now
+
+        // it's a deque, as to support iteration through its elements
         std::deque<token> bank;
 
-        // std::priority_queue<std::chrono::sys_time, token> neato;
         bool keep_all_data = false;
 
         /*
@@ -94,22 +101,25 @@ private:
         ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
         ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos, slot6_init_pos;
         void   SNAPSHOT_PLAYLIST_POSITIONS();
+        void   print_bank_info();
         void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 
         // these may end up going away
         bool showstats;
         bool curiouser;
 
-        void print_deque_data();
-
         // member functions
-        void                                               init_datafile();
-        void                                               init_cvars();
-        void                                               init_hooked_events();
-        void                                               CHECK_NOW();
-        void                                               write_population();
-        void                                               prepare_data();
-        void                                               prune_data();
+        void init_datafile();
+        void init_cvars();
+        void init_hooked_events();
+        void CHECK_NOW();
+        void record_population();
+        void prepare_data();
+        void prune_data();
+        void write_data_to_file();
+
+        ShowPlayerPopulation::token                        get_first_entry();
+        ShowPlayerPopulation::token                        get_last_entry();
         std::string                                        get_current_datetime_str();
         std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(std::string);
         void                                               SET_WHICH_MENU_I_AM_IN();
@@ -130,9 +140,6 @@ public:
         std::string GetPluginName() override;
         void        SetImGuiContext(uintptr_t ctx) override;
 
-        void        ShowOverlay();
-        void        UnregisterOverlay();
-        //
         // inherit from
         //				public BakkesMod::Plugin::PluginWindow
         //	 for the following

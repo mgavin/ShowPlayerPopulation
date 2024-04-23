@@ -256,7 +256,7 @@ namespace bmhelper {
                 {           PlaylistId::GForceFrenzy,               "G-Force Frenzy"},
         };
 
-        std::map<std::string, std::vector<PlaylistId>> PlaylistCategories = {
+        std::map<std::string, std::vector<PlaylistId>> playlist_categories = {
   // S14 - casually viable modes go here
                 {       "Casual",{PlaylistId::Duel,           PlaylistId::Doubles,          PlaylistId::Standard,
 PlaylistId::Chaos,
