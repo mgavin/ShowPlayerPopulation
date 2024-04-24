@@ -26,11 +26,14 @@ class ShowPlayerPopulation :
         public BakkesMod::Plugin::PluginSettingsWindow,
         public BakkesMod::Plugin::PluginWindow {
 private:
+        // variables pertaining to the plugin's functionality
         static const std::string    cmd_prefix;
         const std::filesystem::path RECORD_POPULATION_FILE =
-                gameWrapper->GetDataFolder().append("ShowPlayerPopulation/RecordPopulationData.csv");
+                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
+        const std::filesystem::path help_file =
+                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\help_file_text.txt");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
-                gameWrapper->GetDataFolder().append("ShowPlayerPopulation/FirstTimePopulationNumberPlacements.txt");
+                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
         const std::string DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
         const std::string DATETIME_PARSE_STR  = "%FT%T%z";
 
@@ -50,12 +53,35 @@ private:
         ImColor  col_black       = ImColor {
                 ImVec4 {0.0f, 0.0f, 0.0f, 1.0f}
         };
-        // data
+        ImColor col_white = ImColor {
+                ImVec4 {1.0f, 1.0f, 1.0f, 1.0f}
+        };
+
+        // miscellaneous helper data. graphing should go here.
+        struct thrair {  // three pair
+                std::vector<std::chrono::zoned_time<std::chrono::system_clock::duration>> t;
+                std::vector<float>                                                        xs;
+                std::vector<float>                                                        ys;
+        };
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
         int                                                            TOTAL_IN_GAME_POP = 0;
+        bool                                                           graph_total_pop   = true;
+        thrair                                                         graph_total_pop_data;  // {times, xs, ys}
+        std::map<PlaylistId, thrair>                                   graph_data;  // [PlaylistId] -> {times, xs, ys}
+        std::map<PlaylistId, bool>                                     graph_flags = []() {
+                std::map<PlaylistId, bool> tmp;
+                for (const auto & item : bmhelper::playlist_ids_str) {
+                        tmp[item.first] = false;
+                };
+                return tmp;
+        }();
+        std::map<PlaylistId, bool> graph_flags_selected {graph_flags};
 
+        void print_graph_data();
+
+        // members pertaining to data functionality
         struct token {
                 using sc = std::chrono::system_clock;
                 std::chrono::zoned_time<sc::duration> zt;
@@ -63,10 +89,10 @@ private:
                 int                       total_players_online;  // I've never seen it be unequal to total_pop
                 std::map<PlaylistId, int> playlist_pop;
         };
-        // idk why it's called a bank
+
         // a bank full of tokens
         // it holds all the data during the operation of the plugin
-        // ... instead of reading in and out of a file
+        // ... instead of reading in and out of a file...
         // would be neat to separate out an interface
         // and that would take desining another class to basically
         // -> record, -> write -> read -> save... one class implementation would read / write to the file for every
@@ -76,17 +102,10 @@ private:
         // it's a deque, as to support iteration through its elements
         std::deque<token> bank;
 
-        bool keep_all_data = false;
-
-        /*
-         * To make pruning work: put everything in a fucking queue
-         * check the queue for times, keep track of the queue, update file as necessary
-         *
-         */
-
-        const int hours_min  = 0;
-        const int hours_max  = 168;
-        int       hours_kept = 24;
+        bool      keep_all_data = false;
+        const int hours_min     = 0;
+        const int hours_max     = 168;
+        int       hours_kept    = 24;
 
         // flags for showing numbers above playlists
         // ordered 1-6, top left to bottom right
@@ -108,16 +127,20 @@ private:
         bool showstats;
         bool curiouser;
 
-        // member functions
+        // member functions pertaining to general functionality
         void init_datafile();
         void init_cvars();
         void init_hooked_events();
+        void init_graph_data();
         void CHECK_NOW();
         void record_population();
         void prepare_data();
+
+        void add_last_entry_to_graph_data();
         void prune_data();
         void write_data_to_file();
 
+        // helper functions
         ShowPlayerPopulation::token                        get_first_entry();
         ShowPlayerPopulation::token                        get_last_entry();
         std::string                                        get_current_datetime_str();

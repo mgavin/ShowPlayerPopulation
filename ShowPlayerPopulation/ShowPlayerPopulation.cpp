@@ -16,9 +16,6 @@
  *
  *  - cleanup code
  * todo: alpha release:
- *  - make pruning work
- *    - doesn't work because of the bank possibly being empty, lol
- *  - graph
  *  - take out superfluous options used for testing
  *       .   make a new branch to clean up for "release"
  *
@@ -50,6 +47,8 @@ void ShowPlayerPopulation::onLoad() {
         init_datafile();
         init_cvars();
         init_hooked_events();
+        init_graph_data();
+        prepare_data();
         SET_WHICH_MENU_I_AM_IN();
 }
 
@@ -136,10 +135,10 @@ void ShowPlayerPopulation::init_hooked_events() {
                         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
                         if (mw) {
                                 int tmpp = mw.GetTotalPlayersOnline();
-                                if (get_last_entry().total_pop != tmpp) {
+                                if (get_last_entry().total_pop != tmpp && tmpp != 0) {
                                         record_population();
-                                        prune_data();
                                         prepare_data();
+                                        add_last_entry_to_graph_data();
                                 }
                         }
                 });
@@ -164,6 +163,12 @@ void ShowPlayerPopulation::init_hooked_events() {
                                 DO_CHECK = false;
                         }
                 });
+
+        HookedEvents::AddHookedEvent("Function Engine.GameInfo.PreExit", [this](std::string eventName) {
+                // ASSURED CLEANUP
+                prune_data();
+                write_data_to_file();
+        });
 }
 
 /// <summary>
@@ -173,6 +178,8 @@ void ShowPlayerPopulation::onUnload() {
         // destroy things
         // dont throw here
 
+        // DONT DO ANYTHING HERE BECAUSE IT ISNT GUARANTEED (UNLESS YOU MANUALLY UNLOAD PLUGIN)
+        // SO IT'S JUST KIND OF FOR EASE OF DEVELOPMENT SINCE REBUILD = UNLOAD/LOAD
         prune_data();
         write_data_to_file();
 }
@@ -199,6 +206,7 @@ void ShowPlayerPopulation::write_data_to_file() {
                                 data_written.push_back(std::move(std::to_string(item.playlist_pop.at(playid))));
                         }
                 }
+                LOG("item: zt: {}", item.zt);
                 recordwriter << data_written;
         }
         ofile.close();
@@ -239,6 +247,16 @@ void ShowPlayerPopulation::print_bank_info() {
             get_last_entry().zt.get_local_time() - get_first_entry().zt.get_local_time());
 }
 
+static void PushDisabled() {
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+}
+
+static void PopDisabled() {
+        ImGui::PopItemFlag();
+        ImGui::PopStyleVar();
+}
+
 /// <summary>
 /// This is for helping with IMGUI stuff
 ///
@@ -267,7 +285,6 @@ void ShowPlayerPopulation::RenderSettings() {
         // if (ImGui::Checkbox("Enable ticker scrolling at the top?", &top_scroller)) {
         //        ticker.setValue(top_scroller);
         //}
-
         CVarWrapper shoverlay  = cvarManager->getCvar(cmd_prefix + "flag_show_overlay");
         bool        bshoverlay = shoverlay.getBoolValue();
         if (ImGui::Checkbox("Show the overlay?", &bshoverlay)) {
@@ -336,15 +353,18 @@ void ShowPlayerPopulation::RenderSettings() {
         if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
                 ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-                ImGui::TextUnformatted(
-                        "IF UNSET, THIS WILL TAKE EFFECT WHEN THE PLUGIN UNLOADS\n (LIKE WHEN THE GAME IS CLOSED)");
+                ImGui::TextUnformatted("IF SET, DATA WILL");
+                ImGui::SameLine();
+                ImGui::TextUnformatted("NOT");
+                add_underline(col_white);
+                ImGui::SameLine();
+                ImGui::TextUnformatted("BE TRIMMED WHEN GAME EXITS");
                 ImGui::PopTextWrapPos();
                 ImGui::EndTooltip();
         }
 
         if (bkeep) {
-                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                PushDisabled();
         }
 
         ImGui::SameLine(300.0f, 200.0f);
@@ -352,7 +372,6 @@ void ShowPlayerPopulation::RenderSettings() {
         if (ImGui::Button("PRUNE DATA FILE?")) {
                 popup = true;
                 ImGui::OpenPopup("PRUNE_DATA_CONFIRM");
-                prepare_data();
         }
         if (ImGui::BeginPopupModal(
                     "PRUNE_DATA_CONFIRM",
@@ -392,43 +411,162 @@ void ShowPlayerPopulation::RenderSettings() {
         hrs = std::max(hours_min, std::min(hours_max, hrs));
         hrs_cvar.setValue(hrs);
         if (bkeep) {
-                ImGui::PopItemFlag();
-                ImGui::PopStyleVar();
+                PopDisabled();
         }
 
         ImGui::NewLine();
-        center_imgui_text("DISCLAIMER:  THE FOLLOWING IS ONLY BASED ON VALUES THAT HAVE "
+        center_imgui_text("DISCLAIMER:  THE FOLLOWING GRAPHED DATA IS ONLY BASED ON VALUES THAT HAVE "
                           "BEEN SAVED LOCALLY");
 
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.2f, 0.8f, 1.0f));
+        ImPlotLimits plot_limits;
+        plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
         if (ImGui::CollapsingHeader("Data")) {
                 ImGui::TextUnformatted("Double-click on plot to re-orient data.");
+                ImGui::SameLine(0.0f, 50.0f);
+                ImGui::TextUnformatted("Double right-click on plot for options, such as to set bounds.");
+                ImPlot::SetNextPlotLimits(
+                        graph_total_pop_data.xs.front(),
+                        0,
+                        0,
+                        std::ranges::max(graph_total_pop_data.ys),
+                        ImGuiCond_FirstUseEver);
                 if (ImPlot::BeginPlot(
                             "Population Numbers over Time",
-                            "time",
+                            "time in number of minutes ago (0 = now) (1440 minutes = 1 day)",
                             "pop",
                             ImVec2(-1, 0),
                             ImPlotFlags_Default,
-                            ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMax | ImPlotAxisFlags_LockMin,
-                            ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMax | ImPlotAxisFlags_LockMin)) {
-                        // can plot lines "time/x-axis" as epoch times, render them as formatted
-                        // vertical lines should separate days... that'd be cool
-                        // well... brute force for now, I suppose
+                            ImPlotAxisFlags_Default,
+                            ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMin)) {
+                        if (graph_total_pop) {
+                                ImPlot::PlotLine(
+                                        "TOTAL POPULATION",
+                                        graph_total_pop_data.xs.data(),
+                                        graph_total_pop_data.ys.data(),
+                                        graph_total_pop_data.xs.size());
+                        }
 
+                        for (const auto & entry : graph_flags_selected) {
+                                if (!entry.second) {
+                                        continue;
+                                }
+
+                                ImPlot::PlotLine(
+                                        bmhelper::playlist_ids_str_spaced[entry.first].c_str(),
+                                        graph_data[entry.first].xs.data(),
+                                        graph_data[entry.first].ys.data(),
+                                        graph_data[entry.first].xs.size());
+                        }
+                        plot_limits = ImPlot::GetPlotLimits();
                         ImPlot::EndPlot();
                 }
+                ImGui::BeginColumns(
+                        "###left_and_right_dates",
+                        2,
+                        ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
+                std::chrono::duration<float, std::chrono::minutes::period> left_minutes {plot_limits.X.Min};
+                std::chrono::zoned_time                                    im_dead {
+                        std::chrono::current_zone(),
+                        std::chrono::system_clock::now() + left_minutes};
+                std::string txt = std::vformat("                       {0:%D} {0:%r}", std::make_format_args(im_dead));
+                ImVec2      sz  = ImGui::CalcTextSize(txt.c_str());
+                // ImGui::GetBackgroundDrawList()->AddRectFilled(
+                //         // ImGui::GetWindowDrawList()->AddRectFilled(
+                //         ImVec2(ImGui::GetCursorPos().x, ImGui::GetCursorPos().y),
+                //         ImVec2(sz.x, sz.y),
+                //         col_white);
+                ImGui::TextUnformatted(txt.c_str());
+                ImGui::NextColumn();
+                std::chrono::duration<float, std::chrono::minutes::period> right_minutes {plot_limits.X.Max};
+                std::chrono::zoned_time                                    im_alive {
+                        std::chrono::current_zone(),
+                        std::chrono::system_clock::now() + right_minutes};
+                txt = std::vformat("{0:%D} {0:%r}", std::make_format_args(im_alive));
+                sz  = ImGui::CalcTextSize(txt.c_str());
+                AlignForWidth(sz.x, 1.0f);
+                // ImGui::GetWindowDrawList()->AddRectFilled(
+                //         ImVec2(ImGui::GetCursorPos().x, ImGui::GetCursorPos().y),
+                //         ImVec2(sz.x, sz.y),
+                //         col_white);
+                ImGui::TextUnformatted(txt.c_str());
+                ImGui::EndColumns();
+                // Maybe a list with selectable elements
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.1f, 0.0f, 0.7f));
+                ImGui::BeginColumns(
+                        "graphselectables_total_pop",
+                        6,
+                        ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
+                ImGui::Selectable("TOTAL POPULATION", &graph_total_pop);
+                ImGui::EndColumns();
+                ImGui::SameLine();
+                ImGui::BeginColumns(
+                        "graphselectables_help_text",
+                        3,
+                        ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
+                ImGui::NextColumn();
+                ImGui::TextUnformatted("Click a category to see it graphed.");
+                ImGui::NextColumn();
+                ImGui::TextUnformatted(std::vformat(
+                                               "There are {} available data points.",
+                                               std::make_format_args(graph_total_pop_data.xs.size()))
+                                               .c_str());
+                ImGui::EndColumns();
+
+                ImGui::BeginColumns("graphselectables", 6, ImGuiColumnsFlags_NoResize);
+                size_t mxlines = 0;
+                for (const std::string & header : SHOWN_PLAYLIST_POPS) {
+                        ImGui::TextUnformatted(header.c_str());
+                        add_underline(col_white);
+                        ImGui::NextColumn();
+                        mxlines = std::max(mxlines, bmhelper::playlist_categories[header].size());
+                }
+                for (int line = 0; line < mxlines; ++line) {
+                        for (const std::string & category : SHOWN_PLAYLIST_POPS) {
+                                if (line < bmhelper::playlist_categories[category].size()) {
+                                        PlaylistId playid  = bmhelper::playlist_categories[category][line];
+                                        bool       enabled = graph_flags[bmhelper::playlist_categories[category][line]];
+                                        if (!enabled) {
+                                                PushDisabled();
+                                        }
+                                        ImGui::Selectable(
+                                                bmhelper::playlist_ids_str_spaced[playid].c_str(),
+                                                &graph_flags_selected[playid]);
+
+                                        if (!enabled) {
+                                                PopDisabled();
+                                        }
+                                }
+                                ImGui::NextColumn();
+                        }
+                }
+                ImGui::EndColumns();
+                ImGui::PopStyleColor();
         }
 
         // ADD A BIG OL' DISCLAIMER-EXPLANATION DOWN HERE ON HOW THINGS WORK!
         if (ImGui::CollapsingHeader("How does this work?")) {
                 // SOME TEXT EXPLAINING HOW THINGS WORK
-                ImGui::TextUnformatted("STILL WORKING");
+                ImGui::TextUnformatted("Well...");
         }
 
         if (ImGui::CollapsingHeader("Some questions you may have...")) {
                 // SOME TEXT EXPLAINING SOME QUESTIONS
-                AlignForWidth(ImGui::CalcTextSize("ON THIS").x);
-                ImGui::TextUnformatted("ON THIS");
+                ImGui::SetWindowFontScale(1.1f);
+                AlignForWidth(ImGui::CalcTextSize("WHERE IS THE DATA SAVED?").x);
+                ImGui::TextUnformatted("WHERE IS THE DATA SAVED?");
+                add_underline(col_white);
+                ImGui::TextUnformatted(
+                        std::vformat("{}", std::make_format_args(RECORD_POPULATION_FILE.generic_string())).c_str());
+                ImGui::NewLine();
+
+                AlignForWidth(ImGui::CalcTextSize("WHAT IF I CRASH AND HAVE A PROBLEM?").x);
+                ImGui::TextUnformatted("WHAT IF I CRASH AND HAVE A PROBLEM?");
+                add_underline(col_white);
+                ImGui::TextUnformatted(
+                        "Raise an issue on the github page: https://github.com/mgavin/ShowPlayerPopulation");
+                ImGui::NewLine();
+                ImGui::SetWindowFontScale(1.0f);
         }
         ImGui::PopStyleColor();
 }
@@ -504,12 +642,13 @@ void ShowPlayerPopulation::init_datafile() {
                                 .playlist_pop         = playlist_pop
                         });
                 }
+
+                // just in case the input file had entries out of whack (which it shouldn't)
                 std::sort(begin(bank), end(bank), [](const token & t1, const token & t2) {
                         return t1.zt.get_local_time().time_since_epoch() < t2.zt.get_local_time().time_since_epoch();
                 });
         }
 
-        prepare_data();
         // not working,yet
         GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 }
@@ -582,9 +721,9 @@ void ShowPlayerPopulation::CHECK_NOW() {
 
         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
         if (mw) {
-                // EXTRAS because (I believe) it gets around the "Please select a playlist" notification popping up...
-                // maybe since there's no "EXTRAS" playlist category anymore? ... When I had this at casual, it was
-                // causing an annoying error popup sometimes.
+                // EXTRAS because (I believe) it gets around the "Please select a playlist" notification popping
+                // up... maybe since there's no "EXTRAS" playlist category anymore? ... When I had this at
+                // casual, it was causing an annoying error popup sometimes.
                 mw.StartMatchmaking(PlaylistCategory::EXTRAS);
                 mw.CancelMatchmaking();
         }
@@ -614,9 +753,7 @@ void ShowPlayerPopulation::record_population() {
 ///
 /// </summary>
 void ShowPlayerPopulation::prepare_data() {
-        // prepare it to be shown for graphing purposes
         // ... this should be for all purposes really o, o}
-
         const std::map<PlaylistId, int> & playlist_population = get_last_entry().playlist_pop;
 
         // prepare data to be shown for when the window goes "horizontal"
@@ -665,11 +802,95 @@ void ShowPlayerPopulation::prepare_data() {
         }
 }
 
+void ShowPlayerPopulation::print_graph_data() {
+        std::vector<float> xs = graph_total_pop_data.xs;
+        std::vector<float> ys = graph_total_pop_data.ys;
+        for (int i = 0; i < xs.size(); ++i) {
+                LOG("{} {}", xs[i], ys[i]);
+        }
+}
+
+/// <summary>
+/// PREPARE DATA STRUCTURES FOR GRAPHING
+/// </summary>
+void ShowPlayerPopulation::init_graph_data() {
+        std::chrono::zoned_time now {std::chrono::current_zone(), std::chrono::system_clock::now()};
+        for (const token & t : bank) {
+                std::chrono::zoned_time then = t.zt;
+                graph_total_pop_data.t.push_back(then);
+                graph_total_pop_data.xs.push_back(static_cast<float>(
+                        std::chrono::duration_cast<std::chrono::minutes>(then.get_local_time() - now.get_local_time())
+                                .count()));
+                graph_total_pop_data.ys.push_back(t.total_pop);
+
+                for (const auto & entry : t.playlist_pop) {
+                        PlaylistId playid = entry.first;
+                        int        pop    = entry.second;
+                        if (pop < 10) {
+                                continue;
+                        }
+
+                        graph_data[playid].t.push_back(then);
+                        graph_data[playid].xs.push_back(
+                                static_cast<float>(std::chrono::duration_cast<std::chrono::minutes>(
+                                                           then.get_local_time() - now.get_local_time())
+                                                           .count()));
+                        graph_data[playid].ys.push_back(pop);
+                        graph_flags[playid] = true;
+                }
+        }
+}
+
+void ShowPlayerPopulation::add_last_entry_to_graph_data() {
+        const token & t = get_last_entry();
+        if (t.total_pop == 0) {
+                return;
+        }
+        std::chrono::zoned_time now {std::chrono::current_zone(), std::chrono::system_clock::now()};
+        float                   time_diff = static_cast<float>(
+                std::chrono::duration_cast<std::chrono::minutes>(t.zt.get_local_time() - now.get_local_time()).count());
+        graph_total_pop_data.t.push_back(t.zt);
+        graph_total_pop_data.xs.push_back(0.0f);
+
+        // update every time difference in the list...
+        for (size_t i : std::ranges::views::iota(0, static_cast<int>(graph_total_pop_data.t.size()))) {
+                float time_diff =
+                        static_cast<float>(std::chrono::duration_cast<std::chrono::minutes>(
+                                                   graph_total_pop_data.t[i].get_local_time() - now.get_local_time())
+                                                   .count());
+                graph_total_pop_data.xs[i] = time_diff;
+        }
+        graph_total_pop_data.ys.push_back(static_cast<float>(t.total_pop));
+
+        for (const auto & entry : t.playlist_pop) {
+                PlaylistId playid = entry.first;
+                int        pop    = entry.second;
+                if (pop < 10) {
+                        continue;
+                }
+
+                graph_data[playid].t.push_back(t.zt);
+                graph_data[playid].xs.push_back(0.0f);
+
+                // update every time difference in the list..
+                for (size_t i : std::ranges::views::iota(0, static_cast<int>(graph_data[playid].t.size()))) {
+                        float time_diff = static_cast<float>(
+                                std::chrono::duration_cast<std::chrono::minutes>(
+                                        graph_data[playid].t[i].get_local_time() - now.get_local_time())
+                                        .count());
+                        graph_data[playid].xs[i] = time_diff;
+                }
+                graph_data[playid].ys.push_back(static_cast<float>(pop));
+                graph_flags[playid] = true;
+        }
+}
+
 /// <summary>
 /// Puts the data in a state that adheres to specifications
 /// Namely that all recorded events fit within a certain timeframe.
 /// </summary>
 void ShowPlayerPopulation::prune_data() {
+        LOG("KEEP ALL DATA: {} ; HOURS_KEPT: {}", keep_all_data, hours_kept);
         if (keep_all_data) {
                 return;
         }
@@ -687,6 +908,8 @@ void ShowPlayerPopulation::prune_data() {
         while (!bank.empty() && (yt.get_local_time() - bank.front().zt.get_local_time()) > h) {
                 bank.pop_front();
         }
+
+        // throw std::exception {};
 }
 
 /// <summary>
@@ -891,11 +1114,13 @@ void ShowPlayerPopulation::Render() {
                                 "pop_horiz_tot",
                                 6,
                                 ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
+                        AlignForWidth(ImGui::GetCursorPos().x + ImGui::CalcTextSize("Total Players Online:").x);
                         ImGui::TextUnformatted("Total Players Online:");
                         add_underline(col_black);
                         ImGui::NextColumn();
                         center_imgui_text(std::to_string(get_last_entry().total_pop));
                         ImGui::NextColumn();
+                        AlignForWidth(ImGui::GetCursorPos().x + ImGui::CalcTextSize("Total Population in a Game:").x);
                         ImGui::TextUnformatted("Total Population in a Game:");
                         add_underline(col_black);
                         ImGui::NextColumn();
