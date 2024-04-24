@@ -67,6 +67,8 @@ private:
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
         int                                                            TOTAL_IN_GAME_POP = 0;
+        bool                                                           is_data_open      = false;
+        bool                                                           is_window_focused = false;
         bool                                                           graph_total_pop   = true;
         thrair                                                         graph_total_pop_data;  // {times, xs, ys}
         std::map<PlaylistId, thrair>                                   graph_data;  // [PlaylistId] -> {times, xs, ys}
@@ -137,6 +139,7 @@ private:
         void prepare_data();
 
         void add_last_entry_to_graph_data();
+        void massage_graph_data();
         void prune_data();
         void write_data_to_file();
 
