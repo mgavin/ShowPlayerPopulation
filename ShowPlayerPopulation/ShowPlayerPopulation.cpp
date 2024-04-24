@@ -117,7 +117,7 @@ void ShowPlayerPopulation::init_cvars() {
 
         CVarWrapper keep_cvar = cvarManager->registerCvar(
                 cmd_prefix + "keep_indefinitely",
-                "0",
+                "1",
                 "Should data be kept indefinitely?",
                 false);
         keep_cvar.addOnValueChanged(
@@ -418,10 +418,8 @@ void ShowPlayerPopulation::RenderSettings() {
         }
 
         ImGui::NewLine();
-        center_imgui_text(std::vformat(
-                "DISCLAIMER:  THE FOLLOWING GRAPHED DATA IS ONLY BASED ON VALUES THAT HAVE "
-                "BEEN SAVED LOCALLY. AM {}",
-                std::make_format_args(is_data_open ? "OPEN!" : "CLOSED!!!")));
+        center_imgui_text("DISCLAIMER:  THE FOLLOWING GRAPHED DATA IS ONLY BASED ON VALUES THAT HAVE "
+                          "BEEN SAVED LOCALLY.");
 
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.2f, 0.8f, 1.0f));
         ImPlotLimits plot_limits;
@@ -435,6 +433,7 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::TextUnformatted("Double-click on plot to re-orient data.");
                 ImGui::SameLine(0.0f, 50.0f);
                 ImGui::TextUnformatted("Double right-click on plot for options, such as to set bounds.");
+
                 ImPlot::SetNextPlotLimits(
                         graph_total_pop_data.xs.front(),
                         0,
@@ -468,37 +467,35 @@ void ShowPlayerPopulation::RenderSettings() {
                                         graph_data[entry.first].xs.size());
                         }
                         plot_limits = ImPlot::GetPlotLimits();
+
+                        std::chrono::duration<float, std::chrono::minutes::period> left_minutes {plot_limits.X.Min};
+
+                        std::chrono::sys_time im_dead {std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                                get_last_entry().zt.get_local_time().time_since_epoch() + left_minutes)};
+                        std::string           left_dt =
+                                std::vformat("                       {0:%D} {0:%r}", std::make_format_args(im_dead));
+                        std::chrono::duration<float, std::chrono::minutes::period> right_minutes {plot_limits.X.Max};
+                        std::chrono::sys_time im_alive {std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                                get_last_entry().zt.get_local_time().time_since_epoch() + right_minutes)};
+                        std::string           right_dt = std::vformat("{0:%D} {0:%r}", std::make_format_args(im_alive));
+
+                        ImVec2 left_dt_sz  = ImGui::CalcTextSize(left_dt.c_str());
+                        ImVec2 right_dt_sz = ImGui::CalcTextSize(right_dt.c_str());
+                        ImVec2 pos         = ImPlot::GetPlotPos();
+                        ImVec2 psize       = ImPlot::GetPlotSize();
+                        ImPlot::PushPlotClipRect();
+                        ImGui::GetWindowDrawList()->AddText(
+                                pos + ImVec2 {0, psize.y} - ImVec2 {0.0f, left_dt_sz.y} + ImVec2 {-65.0f, -15.0f},
+                                IM_COL32(255, 255, 255, 255),
+                                left_dt.c_str());
+                        ImGui::GetWindowDrawList()->AddText(
+                                pos + ImVec2 {psize.x, 0} + ImVec2 {-right_dt_sz.x, right_dt_sz.y}
+                                        + ImVec2 {-15.0, 5.0f},
+                                IM_COL32(255, 255, 255, 255),
+                                right_dt.c_str());
+                        ImPlot::PopPlotClipRect();
                         ImPlot::EndPlot();
                 }
-                ImGui::BeginColumns(
-                        "###left_and_right_dates",
-                        2,
-                        ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
-                std::chrono::duration<float, std::chrono::minutes::period> left_minutes {plot_limits.X.Min};
-
-                std::chrono::sys_time im_dead {std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                        get_last_entry().zt.get_local_time().time_since_epoch() + left_minutes)};
-                std::string txt = std::vformat("                       {0:%D} {0:%r}", std::make_format_args(im_dead));
-                ImVec2      sz  = ImGui::CalcTextSize(txt.c_str());
-                // ImGui::GetBackgroundDrawList()->AddRectFilled(
-                //         // ImGui::GetWindowDrawList()->AddRectFilled(
-                //         ImVec2(ImGui::GetCursorPos().x, ImGui::GetCursorPos().y),
-                //         ImVec2(sz.x, sz.y),
-                //         col_white);
-                ImGui::TextUnformatted(txt.c_str());
-                ImGui::NextColumn();
-                std::chrono::duration<float, std::chrono::minutes::period> right_minutes {plot_limits.X.Max};
-                std::chrono::sys_time im_alive {std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                        get_last_entry().zt.get_local_time().time_since_epoch() + right_minutes)};
-                txt = std::vformat("{0:%D} {0:%r}", std::make_format_args(im_alive));
-                sz  = ImGui::CalcTextSize(txt.c_str());
-                AlignForWidth(sz.x, 1.0f);
-                // ImGui::GetWindowDrawList()->AddRectFilled(
-                //         ImVec2(ImGui::GetCursorPos().x, ImGui::GetCursorPos().y),
-                //         ImVec2(sz.x, sz.y),
-                //         col_white);
-                ImGui::TextUnformatted(txt.c_str());
-                ImGui::EndColumns();
                 // Maybe a list with selectable elements
                 ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.1f, 0.0f, 0.7f));
                 ImGui::BeginColumns(
