@@ -27,11 +27,10 @@ class ShowPlayerPopulation :
         public BakkesMod::Plugin::PluginWindow {
 private:
         // variables pertaining to the plugin's functionality
-        static const std::string    cmd_prefix;
-        const std::filesystem::path RECORD_POPULATION_FILE =
+        static constexpr std::string CMD_PREFIX                    = "spp_";
+        static constexpr int         DONT_SHOW_POP_BELOW_THRESHOLD = 10;
+        const std::filesystem::path  RECORD_POPULATION_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
-        const std::filesystem::path help_file =
-                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\help_file_text.txt");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
         const std::string DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
@@ -144,13 +143,11 @@ private:
         void write_data_to_file();
 
         // helper functions
-        ShowPlayerPopulation::token                        get_first_entry();
-        ShowPlayerPopulation::token                        get_last_entry();
+        ShowPlayerPopulation::token                        get_first_bank_entry();
+        ShowPlayerPopulation::token                        get_last_bank_entry();
         std::string                                        get_current_datetime_str();
         std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(std::string);
         void                                               SET_WHICH_MENU_I_AM_IN();
-        void                                               center_imgui_text(const std::string & text);
-        void                                               add_underline(ImColor col_);
 
         void add_notifier(
                 std::string                                   cmd_name,
