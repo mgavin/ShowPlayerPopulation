@@ -7,6 +7,7 @@
 
 #include "bmhelper.h"
 #include "imgui.h"
+#include "implot.h"
 
 /*
  * SAMPLE:
@@ -27,9 +28,23 @@ class ShowPlayerPopulation :
         public BakkesMod::Plugin::PluginWindow {
 private:
         // variables pertaining to the plugin's functionality
-        static constexpr std::string CMD_PREFIX                    = "spp_";
-        static constexpr int         DONT_SHOW_POP_BELOW_THRESHOLD = 10;
-        const std::filesystem::path  RECORD_POPULATION_FILE =
+
+        static const int DONT_SHOW_POP_BELOW_THRESHOLD = 10;
+        // Why less than 10?
+        // Developers tend to jump into modes at their whim
+        // The population numbers are still tracked no matter who is in the
+        // mode, so you would see 1 or 2 people in a mode that isn't available
+        // to the public. I'm guessing, if they don't want to show population
+        // data to begin with, maybe they don't want people stalking those
+        // people? like, "why are they blah blah when blah blah?" ... idk. It
+        // just doesn't seem very relevant to track the 1 or 2 or 9 people
+        // playing in an inaccessible mode. .... except FaceIt for some reason.
+        // and 10 ... because... to give an opportunity to
+        // catch enough people in the custom training editor
+
+        static const std::string          CMD_PREFIX;
+        static const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT;
+        const std::filesystem::path       RECORD_POPULATION_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
@@ -47,9 +62,11 @@ private:
         bool show_in_game_menu     = false;
         bool DO_CHECK              = false;
 
-        ImFont * overlay_font_18 = nullptr;
-        ImFont * overlay_font_22 = nullptr;
-        ImColor  col_black       = ImColor {
+        ImFont * overlay_font_18      = nullptr;
+        ImFont * overlay_font_22      = nullptr;
+        // float    chosen_overlay_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+        ImVec4   chosen_overlay_color = {1.0f, 1.0f, 1.0f, 1.0f};
+        ImColor  col_black            = ImColor {
                 ImVec4 {0.0f, 0.0f, 0.0f, 1.0f}
         };
         ImColor col_white = ImColor {
@@ -58,20 +75,21 @@ private:
 
         // miscellaneous helper data. graphing should go here.
         struct thrair {  // three pair
-                std::vector<std::chrono::zoned_time<std::chrono::system_clock::duration>> t;
-                std::vector<float>                                                        xs;
-                std::vector<float>                                                        ys;
+                std::vector<std::chrono::zoned_seconds> t;
+                std::vector<float>                      xs;
+                std::vector<float>                      ys;
         };
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
         int                                                            TOTAL_IN_GAME_POP = 0;
-        bool                                                           is_data_open      = false;
-        bool                                                           is_window_focused = false;
-        bool                                                           graph_total_pop   = true;
-        thrair                                                         graph_total_pop_data;  // {times, xs, ys}
-        std::map<PlaylistId, thrair>                                   graph_data;  // [PlaylistId] -> {times, xs, ys}
-        std::map<PlaylistId, bool>                                     graph_flags = []() {
+        std::chrono::zoned_seconds   last_massage_update {std::chrono::current_zone()};
+        bool                         has_graph_data      = false;
+        bool                         data_header_is_open = false;
+        bool                         graph_total_pop     = true;
+        thrair                       graph_total_pop_data;  // {times, xs, ys}
+        std::map<PlaylistId, thrair> graph_data;            // [PlaylistId] -> {times, xs, ys}
+        std::map<PlaylistId, bool>   graph_flags = []() {
                 std::map<PlaylistId, bool> tmp;
                 for (const auto & item : bmhelper::playlist_ids_str) {
                         tmp[item.first] = false;
@@ -84,11 +102,10 @@ private:
 
         // members pertaining to data functionality
         struct token {
-                using sc = std::chrono::system_clock;
-                std::chrono::zoned_time<sc::duration> zt;
-                int                                   total_pop;
-                int                       total_players_online;  // I've never seen it be unequal to total_pop
-                std::map<PlaylistId, int> playlist_pop;
+                std::chrono::zoned_seconds zt;
+                int                        total_pop;
+                int                        total_players_online;  // I've never seen it be unequal to total_pop
+                std::map<PlaylistId, int>  playlist_pop;
         };
 
         // a bank full of tokens
@@ -125,8 +142,9 @@ private:
         void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 
         // these may end up going away
-        bool showstats;
-        bool curiouser;
+        bool         showstats;
+        bool         curiouser;
+        ImPlotLimits plot_limits;
 
         // member functions pertaining to general functionality
         void init_datafile();
@@ -143,11 +161,11 @@ private:
         void write_data_to_file();
 
         // helper functions
-        ShowPlayerPopulation::token                        get_first_bank_entry();
-        ShowPlayerPopulation::token                        get_last_bank_entry();
-        std::string                                        get_current_datetime_str();
-        std::chrono::time_point<std::chrono::system_clock> get_timepoint_from_str(std::string);
-        void                                               SET_WHICH_MENU_I_AM_IN();
+        ShowPlayerPopulation::token get_first_bank_entry();
+        ShowPlayerPopulation::token get_last_bank_entry();
+        std::string                 get_current_datetime_str();
+        std::chrono::zoned_seconds  get_timepoint_from_str(std::string);
+        void                        SET_WHICH_MENU_I_AM_IN();
 
         void add_notifier(
                 std::string                                   cmd_name,

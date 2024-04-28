@@ -7,3 +7,6 @@
 [submodule "implot"]
 	path = implot
 	url = git@github.com:epezent/implot
+[submodule "imgui_sugar"]
+	path = imgui_sugar
+	url = https://github.com/mnesarco/imgui_sugar

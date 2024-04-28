@@ -25,6 +25,9 @@
     <Filter Include="IMPLOT">
       <UniqueIdentifier>{a7f34aa1-f604-4d9e-acd3-425ba68b096f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="IMGUI_SUGAR">
+      <UniqueIdentifier>{6516c895-ccf1-4bb0-b0cd-313cbfad171c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="vs_property_pages\BakkesMod.props" />
@@ -37,9 +40,6 @@
       <Filter>IMGUI</Filter>
     </ClCompile>
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_additions.cpp">
-      <Filter>IMGUI</Filter>
-    </ClCompile>
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_demo.cpp">
       <Filter>IMGUI</Filter>
     </ClCompile>
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_draw.cpp">
@@ -94,9 +94,6 @@
       <Filter>CSV</Filter>
     </ClCompile>
     <ClCompile Include="..\implot\implot.cpp">
-      <Filter>IMPLOT</Filter>
-    </ClCompile>
-    <ClCompile Include="..\implot\implot_demo.cpp">
       <Filter>IMPLOT</Filter>
     </ClCompile>
   </ItemGroup>
@@ -187,6 +184,9 @@
     </ClInclude>
     <ClInclude Include="..\implot\implot.h">
       <Filter>IMPLOT</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui_sugar\imgui_sugar.hpp">
+      <Filter>IMGUI_SUGAR</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

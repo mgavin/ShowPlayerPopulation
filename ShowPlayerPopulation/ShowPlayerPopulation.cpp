@@ -1,7 +1,12 @@
+#include <Windows.h>
+
+#include <shellapi.h>
 #include "ShowPlayerPopulation.h"
+
 #include <format>
 #include <fstream>
 #include <ranges>
+#include <ratio>
 
 #include "bakkesmod/imgui/imgui_internal.h"
 
@@ -21,6 +26,9 @@
  *
  */
 
+const std::string          ShowPlayerPopulation::CMD_PREFIX                 = "spp_";
+const std::chrono::seconds ShowPlayerPopulation::GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
+
 BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.100.16", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
@@ -30,6 +38,8 @@ std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 /// is cvar manager only like, guaranteed in here? what the fuck??
 /// </summary>
 void ShowPlayerPopulation::onLoad() {
+        plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
+
         // initialize things
         _globalCvarManager        = cvarManager;
         HookedEvents::gameWrapper = gameWrapper;
@@ -83,20 +93,16 @@ void ShowPlayerPopulation::init_datafile() {
                                         playlist_pop[bmhelper::playlist_str_ids[str]] = row[str].get<int>();
                                 }
                         }
-                        bank.emplace_back(token {
-                                .zt =
-                                        std::chrono::zoned_time {
-                                                                 std::chrono::current_zone(),
-                                                                 get_timepoint_from_str(row["DATETIME"].get<std::string>())},
-                                .total_pop            = row["TOTALPOPULATION"].get<int>(),
-                                .total_players_online = row["TOTALPLAYERSONLINE"].get<int>(),
-                                .playlist_pop         = playlist_pop
-                        });
+                        bank.push_back(
+                                token {.zt        = get_timepoint_from_str(row["DATETIME"].get<std::string>()),
+                                       .total_pop = row["TOTALPOPULATION"].get<int>(),
+                                       .total_players_online = row["TOTALPLAYERSONLINE"].get<int>(),
+                                       .playlist_pop         = playlist_pop});
                 }
 
                 // just in case the input file had entries out of whack (which it shouldn't)
                 std::sort(begin(bank), end(bank), [](const token & t1, const token & t2) {
-                        return t1.zt.get_local_time().time_since_epoch() < t2.zt.get_local_time().time_since_epoch();
+                        return t1.zt.get_local_time() < t2.zt.get_local_time();
                 });
         }
 
@@ -122,8 +128,7 @@ void ShowPlayerPopulation::init_cvars() {
         show_overlay_cvar.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
                 if (is_overlay_open != new_value.getBoolValue()) {
                         gameWrapper->Execute([this](GameWrapper * gw) {
-                                // look, sometimes cvarManager just gets fucking
-                                // lost.
+                                // look, sometimes cvarManager just gets fucking lost.
                                 cvarManager->executeCommand("togglemenu ShowPlayerPopulation", false);
                         });
                 }
@@ -190,14 +195,13 @@ void ShowPlayerPopulation::init_hooked_events() {
                                 // sadly this lags ... querying all those playlists at once :(
                                 if (get_last_bank_entry().total_pop != tmpp && tmpp != 0
                                     && !gameWrapper->IsInOnlineGame()) {
+                                        // THERE'S DATA!
                                         record_population();
                                         prepare_data();
                                         add_last_entry_to_graph_data();
-                                        if (is_data_open && is_window_focused) {
-                                                massage_graph_data();
-                                        }
                                 }
                         }
+                        data_header_is_open = false;
                 });
 
         HookedEvents::AddHookedEvent(
@@ -232,13 +236,14 @@ void ShowPlayerPopulation::init_hooked_events() {
 /// PREPARE DATA STRUCTURES FOR GRAPHING
 /// </summary>
 void ShowPlayerPopulation::init_graph_data() {
+        using namespace std::chrono;
         using namespace std::chrono_literals;
-        std::chrono::zoned_time now {std::chrono::current_zone(), std::chrono::system_clock::now()};
+
+        zoned_seconds now {current_zone(), time_point_cast<seconds>(system_clock::now())};
         for (const token & t : bank) {
-                std::chrono::zoned_time then      = t.zt;
-                float                   time_diff = static_cast<float>(
-                        std::chrono::duration_cast<std::chrono::minutes>(then.get_local_time() - now.get_local_time())
-                                .count());
+                std::chrono::zoned_seconds then      = t.zt;
+                float                      time_diff = static_cast<float>(
+                        duration_cast<minutes>(then.get_local_time() - now.get_local_time()).count());
                 graph_total_pop_data.t.push_back(then);
                 graph_total_pop_data.xs.push_back(time_diff);
                 graph_total_pop_data.ys.push_back(t.total_pop);
@@ -255,6 +260,8 @@ void ShowPlayerPopulation::init_graph_data() {
                         graph_data[playid].ys.push_back(pop);
                         graph_flags[playid] = true;
                 }
+
+                has_graph_data = true;
         }
 }
 
@@ -262,6 +269,8 @@ void ShowPlayerPopulation::init_graph_data() {
 /// Updates the data to include the latest population records.
 /// </summary>
 void ShowPlayerPopulation::record_population() {
+        using namespace std::chrono;
+
         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
 
         if (mw) {
@@ -271,9 +280,7 @@ void ShowPlayerPopulation::record_population() {
                 for (const auto & element : bmhelper::playlist_ids_str) {
                         entry.playlist_pop[element.first] = mw.GetPlayerCount(static_cast<PlaylistIds>(element.first));
                 }
-                entry.zt = std::chrono::zoned_time {
-                        std::chrono::current_zone(),
-                        get_timepoint_from_str(get_current_datetime_str())};
+                entry.zt = zoned_seconds {current_zone(), time_point_cast<seconds>(system_clock::now())};
                 bank.push_back(std::move(entry));
         }
 }
@@ -290,7 +297,6 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
         }
 
         // I can get away with "0s" as xs.back() because it's ostensibly "now"-ish
-
         graph_total_pop_data.t.push_back(t.zt);
         graph_total_pop_data.xs.push_back(0.0f);
         graph_total_pop_data.ys.push_back(static_cast<float>(t.total_pop));
@@ -307,28 +313,47 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
                 graph_data[playid].ys.push_back(static_cast<float>(pop));
                 graph_flags[playid] = true;
         }
+        has_graph_data = true;
 }
 
 /// <summary>
 /// Updates the entries in the graph data to have a consistent time offset from "now".
 /// </summary>
 void ShowPlayerPopulation::massage_graph_data() {
-        const token &           t = get_last_bank_entry();
-        std::chrono::zoned_time now {std::chrono::current_zone(), std::chrono::system_clock::now()};
+        if (!data_header_is_open) {
+                return;
+        }
+
+        using namespace std::chrono;
+        using namespace std::chrono_literals;
+
+        const token & t = get_last_bank_entry();
+        zoned_seconds now {current_zone(), time_point_cast<seconds>(system_clock::now())};
+
+        // only be updatable every 15 seconds
+        if (now.get_local_time() - last_massage_update.get_local_time() < GRAPH_DATA_MASSAGE_TIMEOUT) {
+                return;
+        }
 
         // update every time difference in the list...
-        float time_delta = static_cast<float>(
-                std::chrono::duration_cast<std::chrono::minutes>(t.zt.get_local_time() - now.get_local_time()).count());
         for (size_t i : std::ranges::views::iota(0, static_cast<int>(graph_total_pop_data.t.size()))) {
-                graph_total_pop_data.xs[i] += time_delta;
+                graph_total_pop_data.xs[i] =
+                        static_cast<float>(duration_cast<minutes, float, seconds::period>(
+                                                   graph_total_pop_data.t[i].get_local_time() - now.get_local_time())
+                                                   .count());
         }
 
         for (const auto & entry : t.playlist_pop) {
                 PlaylistId playid = entry.first;
                 for (size_t i : std::ranges::views::iota(0, static_cast<int>(graph_data[playid].t.size()))) {
-                        graph_data[playid].xs[i] += time_delta;
+                        graph_data[playid].xs[i] = static_cast<float>(
+                                duration_cast<minutes, float, seconds::period>(
+                                        graph_total_pop_data.t[i].get_local_time() - now.get_local_time())
+                                        .count());
                 }
         }
+
+        last_massage_update = now;
 }
 
 /// <summary>
@@ -337,13 +362,13 @@ void ShowPlayerPopulation::massage_graph_data() {
 void ShowPlayerPopulation::prepare_data() {
         const std::map<PlaylistId, int> & playlist_population = get_last_bank_entry().playlist_pop;
 
-        // prepare data to be shown for when the window goes "horizontal"
+        // prepare data to be shown
 
         // clear persistent data that's used elsewhere :}
         population_data.clear();
         TOTAL_IN_GAME_POP = 0;
 
-        // get max number of lines
+        // get max number of lines to display in a category on the overlay
         size_t mxlines = 0;
         for (const auto & neat : SHOWN_PLAYLIST_POPS) {
                 mxlines = std::max(bmhelper::playlist_categories[neat].size(), mxlines);
@@ -362,18 +387,6 @@ void ShowPlayerPopulation::prepare_data() {
                                         pop = playlist_population.at(id);
                                 }
                                 if (pop < DONT_SHOW_POP_BELOW_THRESHOLD) {
-                                        // Why less than 10?
-                                        // Developers tend to jump into modes at their whim
-                                        // The population numbers are still tracked no matter who is in the
-                                        // mode, so you would see 1 or 2 people in a mode that isn't available
-                                        // to the public. I'm guessing, if they don't want to show population
-                                        // data to begin with, maybe they don't want people stalking those
-                                        // people? like, "why are they blah blah when blah blah?" ... idk. It
-                                        // just doesn't seem very relevant to track the 1 or 2 or 9 people
-                                        // playing in an inaccessible mode. .... except FaceIt for some reason.
-
-                                        // and 10 ... because... to give an opportunity to catch enough people
-                                        // in the custom training editor
                                         continue;
                                 }
                                 population_data[playstr].push_back({id, pop});
@@ -388,7 +401,6 @@ void ShowPlayerPopulation::prepare_data() {
 /// Ensures that all recorded events fit within a certain timeframe.
 /// </summary>
 void ShowPlayerPopulation::prune_data() {
-        LOG("KEEP ALL DATA: {} ; HOURS_KEPT: {}", keep_all_data, hours_kept);
         if (keep_all_data) {
                 return;
         }
@@ -398,12 +410,13 @@ void ShowPlayerPopulation::prune_data() {
         }
 
         // since the list is sorted, pop off the top
+        using namespace std::chrono;
         using namespace std::chrono_literals;
-        std::chrono::zoned_time yt {std::chrono::current_zone(), std::chrono::system_clock::now()};
-        std::chrono::hours      h {hours_kept};
+        zoned_seconds now {current_zone(), time_point_cast<seconds>(system_clock::now())};
+        hours         h {hours_kept};
 
         // get_first_entry or bank.front() works here due to shortcutting when asking bank.empty()
-        while (!bank.empty() && (yt.get_local_time() - bank.front().zt.get_local_time()) > h) {
+        while (!bank.empty() && (now.get_local_time() - bank.front().zt.get_local_time()) > h) {
                 bank.pop_front();
         }
 }
@@ -411,7 +424,7 @@ void ShowPlayerPopulation::prune_data() {
 /************* NO REDUNDANCY CHECKING FOR DATA IN THIS PROGRAM &&&&&&&&&&&&&&&***********/
 void ShowPlayerPopulation::write_data_to_file() {
         std::ifstream            ifile {RECORD_POPULATION_FILE};
-        std::vector<std::string> header = csv::CSVReader {ifile}.get_col_names();  // THE ONLY "SANITY" ALLOWED
+        std::vector<std::string> header = csv::CSVReader {ifile}.get_col_names();  // THE ONLY "SANITY" {SO FAR}
         ifile.close();
 
         std::ofstream                 ofile {RECORD_POPULATION_FILE};
@@ -436,14 +449,16 @@ void ShowPlayerPopulation::write_data_to_file() {
 }
 
 void ShowPlayerPopulation::CHECK_NOW() {
+        using namespace std::chrono;
         using namespace std::chrono_literals;
-        std::chrono::zoned_time clk {std::chrono::current_zone(), std::chrono::system_clock::now()};
-        long long               seconds = std::chrono::duration_cast<std::chrono::seconds>(
-                                    (clk.get_local_time() - get_last_bank_entry().zt.get_local_time()))
-                                    .count();
-        if (seconds < 600) {  // 600 seconds == 5 minutes.
+
+        zoned_seconds now {current_zone(), time_point_cast<seconds>(system_clock::now())};
+        if (auto time_waited = (now.get_local_time() - get_last_bank_entry().zt.get_local_time());
+            time_waited <= 5min) {
                 // I wanted to have some sort of "timeout" to basically keep people from spamming their shit?
-                LOG("It's too soon to manually request another check of populations. {{{}s}} remaining.", seconds);
+                // turn this into some sort of "disabled" timer in the future ~_~
+                LOG("It's too soon to manually request another check of populations. {} seconds until available.",
+                    5min - time_waited);
                 return;
         }
 
@@ -473,14 +488,14 @@ void ShowPlayerPopulation::print_graph_data() {
         std::vector<float> xs = graph_total_pop_data.xs;
         std::vector<float> ys = graph_total_pop_data.ys;
         for (int i = 0; i < xs.size(); ++i) {
-                LOG("{} {}", xs[i], ys[i]);
+                LOG("{} {} {}", graph_total_pop_data.t[i], xs[i], ys[i]);
         }
 }
 
 /// <summary>
 /// ImGui helper function that pushes some values that make an item appear "inactive"
 /// </summary>
-static void PushItemDisabled() {
+static inline void PushItemDisabled() {
         ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
 }
@@ -488,7 +503,7 @@ static void PushItemDisabled() {
 /// <summary>
 /// ImGui helper function that pops some values that make an item appear "inactive"
 /// </summary>
-static void PopItemDisabled() {
+static inline void PopItemDisabled() {
         ImGui::PopItemFlag();
         ImGui::PopStyleVar();
 }
@@ -496,7 +511,7 @@ static void PopItemDisabled() {
 /// <summary>
 /// https://mastodon.gamedev.place/@dougbinks/99009293355650878
 /// </summary>
-static void AddUnderline(ImColor col_) {
+static inline void AddUnderline(ImColor col_) {
         ImVec2 min = ImGui::GetItemRectMin();
         ImVec2 max = ImGui::GetItemRectMax();
         min.y      = max.y;
@@ -510,7 +525,7 @@ static void AddUnderline(ImColor col_) {
 /// </summary>
 /// <param name="width">total width of items</param>
 /// <param name="alignment">where on the line to align</param>
-static void AlignForWidth(float width, float alignment = 0.5f) {
+static inline void AlignForWidth(float width, float alignment = 0.5f) {
         float avail = ImGui::GetContentRegionAvail().x;
         float off   = (avail - width) * alignment;
         if (off > 0.0f)
@@ -522,9 +537,34 @@ static void AlignForWidth(float width, float alignment = 0.5f) {
 /// https://stackoverflow.com/questions/64653747/how-to-center-align-text-horizontally
 /// </summary>
 /// <param name="text">The text to center.</param>
-static void CenterImGuiText(const std::string & text) {
+static inline void CenterImGuiText(const std::string & text) {
         AlignForWidth(ImGui::CalcTextSize(text.c_str()).x);
         ImGui::TextUnformatted(text.c_str());
+}
+
+/// <summary>
+/// taken from https://gist.github.com/dougbinks/ef0962ef6ebe2cadae76c4e9f0586c69
+/// "hyperlink urls"
+/// </summary>
+static inline void TextURL(const char * name_, const char * URL_, uint8_t SameLineBefore_, uint8_t SameLineAfter_) {
+        if (1 == SameLineBefore_) {
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        }
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 165, 255, 255));
+        ImGui::Text(name_);
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered()) {
+                if (ImGui::IsMouseClicked(0)) {
+                        ShellExecute(NULL, "open", URL_, NULL, NULL, SW_SHOWNORMAL);
+                }
+                AddUnderline(ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered]);
+                ImGui::SetTooltip("  Open in browser\n%s", URL_);
+        } else {
+                AddUnderline(ImGui::GetStyle().Colors[ImGuiCol_Button]);
+        }
+        if (1 == SameLineAfter_) {
+                ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        }
 }
 
 /// <summary>
@@ -534,7 +574,8 @@ static void CenterImGuiText(const std::string & text) {
 /// settings, this will be used instead.
 /// </summary>
 void ShowPlayerPopulation::RenderSettings() {
-        // for imgui plugin window
+        using namespace std::chrono;
+
         // CVarWrapper ticker       = cvarManager->getCvar("rppd_enable_topscroll");
         // bool        top_scroller = ticker.getBoolValue();
         // if (ImGui::Checkbox("Enable ticker scrolling at the top?", &top_scroller)) {
@@ -546,6 +587,11 @@ void ShowPlayerPopulation::RenderSettings() {
                 shoverlay.setValue(bshoverlay);
         }
 
+        ImGui::ColorPicker4(
+                "PICK A COLOR!",
+                &chosen_overlay_color.x,
+                ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_Float
+                        | ImGuiColorEditFlags_DisplayRGB);
         // show in main menu, show in game, show in playlist menu | flags
         // still need color / transparency /location locking options for the overlays
 
@@ -632,7 +678,7 @@ void ShowPlayerPopulation::RenderSettings() {
                     "PRUNE_DATA_CONFIRM",
                     &popup,
                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration)) {
-                ImGui::SetWindowSize(ImVec2(300.0f, 80.0f), ImGuiCond_Always);
+                ImGui::SetWindowSize(ImVec2(300.0f, 60.0f), ImGuiCond_Always);
                 CenterImGuiText("Are you sure you want to prune your data?");
                 ImGuiStyle & style  = ImGui::GetStyle();
                 float        width  = 0.0f;
@@ -648,7 +694,8 @@ void ShowPlayerPopulation::RenderSettings() {
                 }
                 ImGui::SameLine(0.0f, 50.0f);
                 if (ImGui::Button("no", ImVec2(80, 20))) {
-                        write_data_to_file();
+                        // write_data_to_file();
+                        print_graph_data();
                         ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
@@ -670,21 +717,36 @@ void ShowPlayerPopulation::RenderSettings() {
         }
 
         ImGui::NewLine();
-        CenterImGuiText("DISCLAIMER:  THE FOLLOWING GRAPHED DATA IS ONLY BASED ON VALUES THAT HAVE "
-                        "BEEN SAVED LOCALLY.");
+        ImVec2 tmpts = ImGui::CalcTextSize(
+                "DISCLAIMER:  THE FOLLOWING GRAPHED DATA IS ONLY BASED ON VALUES THAT HAVE BEEN SAVED LOCALLY.");
+        AlignForWidth(tmpts.x);
+        ImGui::TextUnformatted("DISCLAIMER:  THE FOLLOWING GRAPHED DATA IS");
+        ImGui::SameLine();
+        ImGui::TextUnformatted("ONLY");
+        AddUnderline(col_white);
+        ImGui::SameLine();
+        ImGui::TextUnformatted("BASED ON VALUES THAT HAVE BEEN SAVED LOCALLY.");
 
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.2f, 0.8f, 1.0f));
-        ImPlotLimits plot_limits;
+
         plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
-        bool data_open_temp;
-        if ((data_open_temp = ImGui::CollapsingHeader("Data"))) {
-                if (!is_data_open && data_open_temp && is_window_focused) {
-                        massage_graph_data();
-                        is_data_open = true;
-                }
+        if (has_graph_data && (data_header_is_open = ImGui::CollapsingHeader("Data"))) {
+                massage_graph_data();
+
+                float       width = 0.0f;
+                std::string when_updates_txt =
+                        std::vformat("The graph updates every {}", std::make_format_args(GRAPH_DATA_MASSAGE_TIMEOUT));
+                width += ImGui::CalcTextSize("Double-click on plot to re-orient data.").x;
+                width += 50.0f;
+                width += ImGui::CalcTextSize("Double right-click on plot for options, such as to set bounds.").x;
+                width += 50.0f;
+                width += ImGui::CalcTextSize(when_updates_txt.c_str()).x;
+                AlignForWidth(width);
                 ImGui::TextUnformatted("Double-click on plot to re-orient data.");
                 ImGui::SameLine(0.0f, 50.0f);
                 ImGui::TextUnformatted("Double right-click on plot for options, such as to set bounds.");
+                ImGui::SameLine(0.0f, 50.0f);
+                ImGui::TextUnformatted(when_updates_txt.c_str());
 
                 ImPlot::SetNextPlotLimits(
                         graph_total_pop_data.xs.front(),
@@ -720,17 +782,16 @@ void ShowPlayerPopulation::RenderSettings() {
                         }
                         plot_limits = ImPlot::GetPlotLimits();
 
-                        std::chrono::duration<float, std::chrono::minutes::period> left_minutes {plot_limits.X.Min};
+                        duration<float, minutes::period> left_minutes {plot_limits.X.Min};
+                        zoned_seconds                    im_dead {current_zone()};
+                        im_dead = time_point_cast<seconds>(last_massage_update.get_local_time())
+                                  + duration_cast<seconds, float, minutes::period>(left_minutes);
+                        std::string left_dt = std::vformat("{0:%D} {0:%r}", std::make_format_args(im_dead));
 
-                        std::chrono::sys_time<std::chrono::system_clock::duration> im_dead {
-                                std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                                        get_last_bank_entry().zt.get_local_time().time_since_epoch() + left_minutes)};
-                        std::string left_dt =
-                                std::vformat("                       {0:%D} {0:%r}", std::make_format_args(im_dead));
-                        std::chrono::duration<float, std::chrono::minutes::period> right_minutes {plot_limits.X.Max};
-                        std::chrono::sys_time<std::chrono::system_clock::duration> im_alive {
-                                std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                                        get_last_bank_entry().zt.get_local_time().time_since_epoch() + right_minutes)};
+                        duration<float, minutes::period> right_minutes {plot_limits.X.Max};
+                        zoned_seconds                    im_alive {current_zone()};
+                        im_alive = time_point_cast<seconds>(last_massage_update.get_local_time())
+                                   + duration_cast<seconds, float, minutes::period>(right_minutes);
                         std::string right_dt = std::vformat("{0:%D} {0:%r}", std::make_format_args(im_alive));
 
                         ImVec2 left_dt_sz  = ImGui::CalcTextSize(left_dt.c_str());
@@ -739,7 +800,7 @@ void ShowPlayerPopulation::RenderSettings() {
                         ImVec2 psize       = ImPlot::GetPlotSize();
                         ImPlot::PushPlotClipRect();
                         ImGui::GetWindowDrawList()->AddText(
-                                pos + ImVec2 {0, psize.y} - ImVec2 {0.0f, left_dt_sz.y} + ImVec2 {-65.0f, -15.0f},
+                                pos + ImVec2 {0, psize.y} - ImVec2 {0.0f, left_dt_sz.y} + ImVec2 {15.0f, -15.0f},
                                 IM_COL32(255, 255, 255, 255),
                                 left_dt.c_str());
                         ImGui::GetWindowDrawList()->AddText(
@@ -802,19 +863,11 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::EndColumns();
                 ImGui::PopStyleColor();
         }
-        if (!data_open_temp) {
-                is_data_open = false;
-        }
-        is_window_focused = ImGui::IsWindowFocused();  // could this be done better?
-                                                       // I want the data window to collapse when the plugin settings
-                                                       // lose focus... so I wanted to go through the context?
 
         // ADD A BIG OL' DISCLAIMER-EXPLANATION DOWN HERE ON HOW THINGS WORK!
         if (ImGui::CollapsingHeader("How does this work?")) {
-                // SOME TEXT EXPLAINING HOW THINGS WORK
-                ImGui::TextUnformatted("Well...");
-
                 // ImGuiTextExplainingHowThisWorks();
+                ImGui::TextUnformatted("Well...");
         }
 
         if (ImGui::CollapsingHeader("Some questions you may have...")) {
@@ -832,8 +885,8 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::TextUnformatted("WHAT IF I CRASH AND HAVE A PROBLEM?");
                 AddUnderline(col_white);
                 ImGui::Unindent(80.0f);
-                ImGui::TextUnformatted(
-                        "Raise an issue on the github page: https://github.com/mgavin/ShowPlayerPopulation");
+                ImGui::TextUnformatted("Raise an issue on the github page: ");
+                TextURL("HERE", "https://github.com/mgavin/ShowPlayerPopulation", true, false);
                 ImGui::NewLine();
                 ImGui::SetWindowFontScale(1.0f);
         }
@@ -877,8 +930,10 @@ ShowPlayerPopulation::token ShowPlayerPopulation::get_last_bank_entry() {
 /// </summary>
 /// <returns>_now_ represented as a datetime string</returns>
 std::string ShowPlayerPopulation::get_current_datetime_str() {
-        const std::chrono::zoned_time t {std::chrono::current_zone(), std::chrono::system_clock::now()};
-        return std::vformat(DATETIME_FORMAT_STR, std::make_format_args(t));
+        using namespace std::chrono;
+
+        const zoned_seconds now {current_zone(), time_point_cast<seconds>(system_clock::now())};
+        return std::vformat(DATETIME_FORMAT_STR, std::make_format_args(now));
 }
 
 /// <summary>
@@ -886,13 +941,13 @@ std::string ShowPlayerPopulation::get_current_datetime_str() {
 /// </summary>
 /// <param name="str">a string representation of the datetime</param>
 /// <returns>a time_point representing the string</returns>
-std::chrono::time_point<std::chrono::system_clock> ShowPlayerPopulation::get_timepoint_from_str(std::string str) {
-        std::chrono::sys_time<std::chrono::system_clock::duration> tmpd;
-        std::istringstream                                         ss(str);
-        ss >> std::chrono::parse(DATETIME_PARSE_STR, tmpd);
-        std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration> tmptp {
-                tmpd.time_since_epoch()};
-        return tmptp;
+std::chrono::zoned_seconds ShowPlayerPopulation::get_timepoint_from_str(std::string str) {
+        using namespace std::chrono;
+
+        sys_time<seconds>  tmpd;
+        std::istringstream ss(str);
+        ss >> parse(DATETIME_PARSE_STR, tmpd);
+        return zoned_seconds {current_zone(), tmpd};
 }
 
 /// <summary>
@@ -1057,7 +1112,7 @@ void ShowPlayerPopulation::Render() {
                 // SHOW THE DAMN NUMBERS, JIM!
                 ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
-                ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_WindowBg, chosen_overlay_color);
                 ImGuiWindowFlags flags = ImGuiWindowFlags_None | ImGuiWindowFlags_NoCollapse;
                 if (lock_overlay) {
                         flags |= ImGuiWindowFlags_NoInputs;
