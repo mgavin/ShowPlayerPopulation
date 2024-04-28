@@ -128,6 +128,11 @@ void ShowPlayerPopulation::init_cvars() {
         show_overlay_cvar.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
                 if (is_overlay_open != new_value.getBoolValue()) {
                         gameWrapper->Execute([this](GameWrapper * gw) {
+                                ImGuiContext * igc = ImGui::GetCurrentContext();
+                                if (igc != nullptr) {
+                                        igc->Style.Alpha = 1.0f;
+                                }
+
                                 // look, sometimes cvarManager just gets fucking lost.
                                 cvarManager->executeCommand("togglemenu ShowPlayerPopulation", false);
                         });
@@ -246,7 +251,7 @@ void ShowPlayerPopulation::init_graph_data() {
                         duration_cast<minutes>(then.get_local_time() - now.get_local_time()).count());
                 graph_total_pop_data.t.push_back(then);
                 graph_total_pop_data.xs.push_back(time_diff);
-                graph_total_pop_data.ys.push_back(t.total_pop);
+                graph_total_pop_data.ys.push_back(static_cast<float>(t.total_pop));
 
                 for (const auto & entry : t.playlist_pop) {
                         PlaylistId playid = entry.first;
@@ -257,7 +262,7 @@ void ShowPlayerPopulation::init_graph_data() {
 
                         graph_data[playid].t.push_back(then);
                         graph_data[playid].xs.push_back(time_diff);
-                        graph_data[playid].ys.push_back(pop);
+                        graph_data[playid].ys.push_back(static_cast<float>(pop));
                         graph_flags[playid] = true;
                 }
 
@@ -587,17 +592,53 @@ void ShowPlayerPopulation::RenderSettings() {
                 shoverlay.setValue(bshoverlay);
         }
 
-        ImGui::ColorPicker4(
-                "PICK A COLOR!",
-                &chosen_overlay_color.x,
-                ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_Float
-                        | ImGuiColorEditFlags_DisplayRGB);
-        // show in main menu, show in game, show in playlist menu | flags
-        // still need color / transparency /location locking options for the overlays
+        ImGui::NewLine();
+        ImGui::Indent(20.0f);
+        ImGuiColorEditFlags cef = ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview
+                                  | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB;
 
+        bool open_popup1 = ImGui::Button("Choose color for the overlay background.");
+        ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+        open_popup1 |= ImGui::ColorButton("OverlayColor", chosen_overlay_color, cef);
+        if (open_popup1) {
+                ImGui::OpenPopup("overlaycolorpicker");
+        }
+        if (ImGui::BeginPopup("overlaycolorpicker")) {
+                ImGui::Text("Choose the background color for the overlay.");
+                ImGui::Separator();
+                ImGui::ColorPicker4(
+                        "##picker",
+                        (float *)&chosen_overlay_color,
+                        cef | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+                ImGui::EndPopup();
+        }
+        ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x * 20);
+
+        bool open_popup2 = ImGui::Button("Choose color for the text on the overlay.");
+        ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+        open_popup2 |= ImGui::ColorButton("OverlayTextColor", chosen_overlay_text_color, cef);
+        if (open_popup2) {
+                ImGui::OpenPopup("overlaytextcolorpicker");
+        }
+        if (ImGui::BeginPopup("overlaytextcolorpicker")) {
+                ImGui::Text("Choose the text color for the overlay.");
+                ImGui::Separator();
+                ImGui::ColorPicker4(
+                        "##picker",
+                        (float *)&chosen_overlay_text_color,
+                        cef | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+                ImGui::EndPopup();
+        }
+
+        ImGui::Separator();
+        ImGui::Unindent(20.0f);
+        ImGui::NewLine();
+        // show in main menu, show in game, show in playlist menu | flags
         if (ImGui::Button("CHECK POPULATION NOW")) {
                 gameWrapper->Execute([this](GameWrapper * gw) { CHECK_NOW(); });
         }
+
+        ImGui::NewLine();
 
         if (ImGui::Checkbox("Lock overlay?", &lock_overlay)) {
                 CVarWrapper cvw = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay");
@@ -618,6 +659,9 @@ void ShowPlayerPopulation::RenderSettings() {
                 CVarWrapper cvw = cvarManager->getCvar(CMD_PREFIX + "flag_show_in_game_menu");
                 cvw.setValue(show_in_game_menu);
         }
+
+        ImGui::NewLine();
+        ImGui::Separator();
 
         if (ImGui::Checkbox("SHOW ALL?", &show_all)) {
                 if (show_all) {
@@ -642,6 +686,8 @@ void ShowPlayerPopulation::RenderSettings() {
         if (ImGui::Button("SNAPSHOT PLAYLIST NUMBER POSITIONS")) {
                 SNAPSHOT_PLAYLIST_POSITIONS();
         }
+
+        ImGui::Separator();
 
         ImGui::Text("%d hours selected. (%d days, %d hours)", hours_kept, hours_kept / 24, hours_kept % 24);
 
@@ -1118,7 +1164,7 @@ void ShowPlayerPopulation::Render() {
                         flags |= ImGuiWindowFlags_NoInputs;
                 }
                 ImGui::Begin("Hey, cutie", NULL, flags);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
+                ImGui::PushStyleColor(ImGuiCol_Text, chosen_overlay_text_color);
                 ImGui::SetWindowFontScale(1.3f);
                 // ImGui::PushFont(overlay_font_22);
                 CenterImGuiText(std::vformat(

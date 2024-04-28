@@ -62,11 +62,12 @@ private:
         bool show_in_game_menu     = false;
         bool DO_CHECK              = false;
 
-        ImFont * overlay_font_18      = nullptr;
-        ImFont * overlay_font_22      = nullptr;
+        ImFont * overlay_font_18           = nullptr;
+        ImFont * overlay_font_22           = nullptr;
         // float    chosen_overlay_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-        ImVec4   chosen_overlay_color = {1.0f, 1.0f, 1.0f, 1.0f};
-        ImColor  col_black            = ImColor {
+        ImVec4   chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 1.0f};
+        ImVec4   chosen_overlay_text_color = {1.0f, 1.0f, 1.0f, 1.0f};
+        ImColor  col_black                 = ImColor {
                 ImVec4 {0.0f, 0.0f, 0.0f, 1.0f}
         };
         ImColor col_white = ImColor {
