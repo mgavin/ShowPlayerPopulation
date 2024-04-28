@@ -142,9 +142,8 @@ private:
         void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 
         // these may end up going away
-        bool         showstats;
-        bool         curiouser;
-        ImPlotLimits plot_limits;
+        bool showstats;
+        bool curiouser;
 
         // member functions pertaining to general functionality
         void init_datafile();

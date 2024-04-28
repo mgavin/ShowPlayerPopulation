@@ -39,8 +39,6 @@ std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 /// is cvar manager only like, guaranteed in here? what the fuck??
 /// </summary>
 void ShowPlayerPopulation::onLoad() {
-        plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
-
         // initialize things
         _globalCvarManager        = cvarManager;
         HookedEvents::gameWrapper = gameWrapper;
@@ -753,6 +751,7 @@ void ShowPlayerPopulation::RenderSettings() {
         ImGui::TextUnformatted("BASED ON VALUES THAT HAVE BEEN SAVED LOCALLY.");
 
         set_StyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.2f, 0.8f, 1.0f));
+        ImPlotLimits plot_limits;
         plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
         if (has_graph_data && (data_header_is_open = ImGui::CollapsingHeader("Data"))) {
                 massage_graph_data();
@@ -1128,121 +1127,117 @@ void ShowPlayerPopulation::Render() {
                 // SHOW THE DAMN NUMBERS, JIM!
                 ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
-                ImGui::PushStyleColor(ImGuiCol_WindowBg, chosen_overlay_color);
+                set_StyleColor(ImGuiCol_WindowBg, chosen_overlay_color);
                 ImGuiWindowFlags flags = ImGuiWindowFlags_None | ImGuiWindowFlags_NoCollapse;
                 if (lock_overlay) {
                         flags |= ImGuiWindowFlags_NoInputs;
                 }
-                ImGui::Begin("Hey, cutie", NULL, flags);
-                ImGui::PushStyleColor(ImGuiCol_Text, chosen_overlay_text_color);
-                ImGui::SetWindowFontScale(1.3f);
-                // ImGui::PushFont(overlay_font_22);
-                CenterImGuiText(std::vformat(
-                                        "POPULATIONS! LAST UPDATED: {0:%r} {0:%D}",
-                                        std::make_format_args(get_last_bank_entry().zt))
-                                        .c_str());
-                ImGui::NewLine();
-                ImGui::Indent(20.0f);
-                if (ImGui::GetWindowWidth() <= (ImGui::GetIO().DisplaySize.x / 2.0f)) {
-                        // less than or equal to half of the width of the screen
-                        // = "vertical layout"
-                        ImGui::BeginColumns("populationnums_vert", 2, ImGuiColumnsFlags_NoResize);
-                        ImGui::TextUnformatted("Total Players Online:");
-                        AddUnderline(col_black);
-                        ImGui::NextColumn();
-                        CenterImGuiText(std::to_string(get_last_bank_entry().total_pop));
-                        ImGui::NextColumn();
-                        ImGui::TextUnformatted("Total Population in a Game:");
-                        AddUnderline(col_black);
-                        ImGui::NextColumn();
-                        CenterImGuiText(std::to_string(TOTAL_IN_GAME_POP));
-                        ImGui::NextColumn();
-
-                        std::vector<std::pair<PlaylistId, int>> playlist_pops;
-
-                        for (const auto & str : SHOWN_PLAYLIST_POPS) {
-                                auto pop = population_data[str];
-                                for (const auto & popv : pop) {
-                                        playlist_pops.push_back({popv.first, popv.second});
-                                }
-                        }
-
-                        // ImGui::PushFont(overlay_font_18);
-                        for (const std::pair<PlaylistId, int> & ppops : playlist_pops) {
-                                std::string playliststr = bmhelper::playlist_ids_str_spaced[ppops.first];
-                                int         pop         = ppops.second;
-
-                                ImGui::TextUnformatted(std::vformat("{}:", std::make_format_args(playliststr)).c_str());
+                with_Window("Hey, cutie", NULL, flags) {
+                        set_StyleColor(ImGuiCol_Text, chosen_overlay_text_color);
+                        ImGui::SetWindowFontScale(1.3f);
+                        // set_Font(overlay_font_22);
+                        CenterImGuiText(std::vformat(
+                                                "POPULATIONS! LAST UPDATED: {0:%r} {0:%D}",
+                                                std::make_format_args(get_last_bank_entry().zt))
+                                                .c_str());
+                        ImGui::NewLine();
+                        ImGui::Indent(20.0f);
+                        if (ImGui::GetWindowWidth() <= (ImGui::GetIO().DisplaySize.x / 2.0f)) {
+                                // less than or equal to half of the width of the screen = "vertical layout"
+                                ImGui::BeginColumns("populationnums_vert", 2, ImGuiColumnsFlags_NoResize);
+                                ImGui::TextUnformatted("Total Players Online:");
+                                AddUnderline(col_black);
                                 ImGui::NextColumn();
-                                CenterImGuiText(std::vformat("{}", std::make_format_args(pop)));
+                                CenterImGuiText(std::to_string(get_last_bank_entry().total_pop));
                                 ImGui::NextColumn();
-                        }
-                        // ImGui::PopFont();
-                        ImGui::EndColumns();
-                } else {
-                        // greater than half of the width of the screen
-                        // "horizontal layout"
+                                ImGui::TextUnformatted("Total Population in a Game:");
+                                AddUnderline(col_black);
+                                ImGui::NextColumn();
+                                CenterImGuiText(std::to_string(TOTAL_IN_GAME_POP));
+                                ImGui::NextColumn();
 
-                        ImGui::BeginColumns(
-                                "pop_horiz_tot",
-                                6,
-                                ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
-                        CenterImGuiText("Total Players Online:");
-                        AddUnderline(col_black);
-                        ImGui::NextColumn();
-                        CenterImGuiText(std::to_string(get_last_bank_entry().total_pop));
-                        ImGui::NextColumn();
-                        CenterImGuiText("Total Population in a Game:");
-                        AddUnderline(col_black);
-                        ImGui::NextColumn();
-                        CenterImGuiText(std::to_string(TOTAL_IN_GAME_POP));
-                        ImGui::EndColumns();
+                                std::vector<std::pair<PlaylistId, int>> playlist_pops;
 
-                        size_t mxlines = 0;
-                        for (const auto & x : population_data) {
-                                mxlines = std::max(mxlines, x.second.size());
-                        }
-                        // ImGui::PushFont(overlay_font_18);
-                        ImGui::BeginColumns("populationnums_horiz", 12, ImGuiColumnsFlags_NoResize);
-                        for (int line = 0; line < mxlines; ++line) {
-                                for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
-                                        if (line >= population_data[playstr].size()) {
-                                                // nothing to show :(
-                                                ImGui::NextColumn();
-                                                ImGui::NextColumn();
-                                                continue;
-                                        } else {
-                                                PlaylistId id  = population_data[playstr][line].first;
-                                                int        pop = population_data[playstr][line].second;
-                                                ImGui::TextUnformatted(
-                                                        std::vformat(
-                                                                "{}:",
-                                                                std::make_format_args(
-                                                                        bmhelper::playlist_ids_str_spaced[id]))
-                                                                .c_str());
-                                                ImGui::NextColumn();
-                                                // MANUAL CENTERING? WTF ... the width isnt being correctly set.
-                                                std::string str = std::vformat("{}", std::make_format_args(pop));
-                                                ImGui::SetCursorPosX(
-                                                        ImGui::GetCursorPosX()
-                                                        + ((ImGui::GetContentRegionAvailWidth()
-                                                            - ImGui::CalcTextSize(str.c_str()).x)
-                                                           * 0.5));
-                                                ImGui::TextUnformatted(str.c_str());
-                                                ImGui::NextColumn();
+                                for (const auto & str : SHOWN_PLAYLIST_POPS) {
+                                        auto pop = population_data[str];
+                                        for (const auto & popv : pop) {
+                                                playlist_pops.push_back({popv.first, popv.second});
                                         }
                                 }
-                        }
-                        // ImGui::PopFont();
-                        ImGui::EndColumns();
-                }
-                // ImGui::PopFont();
-                ImGui::PopStyleColor();
-                ImGui::PopStyleColor();
-                ImGui::End();
-        }
 
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+                                // with_Font(overlay_font_18) {
+                                for (const std::pair<PlaylistId, int> & ppops : playlist_pops) {
+                                        std::string playliststr = bmhelper::playlist_ids_str_spaced[ppops.first];
+                                        int         pop         = ppops.second;
+
+                                        ImGui::TextUnformatted(
+                                                std::vformat("{}:", std::make_format_args(playliststr)).c_str());
+                                        ImGui::NextColumn();
+                                        CenterImGuiText(std::vformat("{}", std::make_format_args(pop)));
+                                        ImGui::NextColumn();
+                                }
+                                // }
+                                ImGui::EndColumns();
+                        } else {
+                                // greater than half of the width of the screen = "horizontal layout"
+
+                                ImGui::BeginColumns(
+                                        "pop_horiz_tot",
+                                        6,
+                                        ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
+                                CenterImGuiText("Total Players Online:");
+                                AddUnderline(col_black);
+                                ImGui::NextColumn();
+                                CenterImGuiText(std::to_string(get_last_bank_entry().total_pop));
+                                ImGui::NextColumn();
+                                CenterImGuiText("Total Population in a Game:");
+                                AddUnderline(col_black);
+                                ImGui::NextColumn();
+                                CenterImGuiText(std::to_string(TOTAL_IN_GAME_POP));
+                                ImGui::EndColumns();
+
+                                size_t mxlines = 0;
+                                for (const auto & x : population_data) {
+                                        mxlines = std::max(mxlines, x.second.size());
+                                }
+                                // with_Font(overlay_font_18) {
+                                ImGui::BeginColumns("populationnums_horiz", 12, ImGuiColumnsFlags_NoResize);
+                                for (int line = 0; line < mxlines; ++line) {
+                                        for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
+                                                if (line >= population_data[playstr].size()) {
+                                                        // nothing to show :(
+                                                        ImGui::NextColumn();
+                                                        ImGui::NextColumn();
+                                                        continue;
+                                                } else {
+                                                        PlaylistId id  = population_data[playstr][line].first;
+                                                        int        pop = population_data[playstr][line].second;
+                                                        ImGui::TextUnformatted(
+                                                                std::vformat(
+                                                                        "{}:",
+                                                                        std::make_format_args(
+                                                                                bmhelper::playlist_ids_str_spaced[id]))
+                                                                        .c_str());
+                                                        ImGui::NextColumn();
+                                                        // MANUAL CENTERING? WTF ... the width isnt being correctly set.
+                                                        std::string str =
+                                                                std::vformat("{}", std::make_format_args(pop));
+                                                        ImGui::SetCursorPosX(
+                                                                ImGui::GetCursorPosX()
+                                                                + ((ImGui::GetContentRegionAvailWidth()
+                                                                    - ImGui::CalcTextSize(str.c_str()).x)
+                                                                   * 0.5f));
+                                                        ImGui::TextUnformatted(str.c_str());
+                                                        ImGui::NextColumn();
+                                                }
+                                        }
+                                }
+                                // }
+                                ImGui::EndColumns();
+                        }
+                }
+        }
+        set_StyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
         ImVec2      onebar, twobar, threebar, fourbar, fivebar, sixbar;
         const float WIN_HEIGHT = 40.0f;
         const float WIN_WIDTH  = 247.0f;
@@ -1251,79 +1246,76 @@ void ShowPlayerPopulation::Render() {
         if (slot1) {
                 ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot1_init_pos, ImGuiCond_FirstUseEver);
-                ImGui::Begin("show1", &slot1, ImGuiWindowFlags_NoTitleBar);
-                onepos = ImGui::GetWindowPos();
-                onebar = ImGui::GetWindowSize();
-                ImGui::End();
+                with_Window("show1", &slot1, ImGuiWindowFlags_NoTitleBar) {
+                        onepos = ImGui::GetWindowPos();
+                        onebar = ImGui::GetWindowSize();
+                }
         }
         if (slot2) {
                 ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot2_init_pos, ImGuiCond_FirstUseEver);
-                ImGui::Begin("show2", &slot2, ImGuiWindowFlags_NoTitleBar);
-                twopos = ImGui::GetWindowPos();
-                twobar = ImGui::GetWindowSize();
-                ImGui::End();
+                with_Window("show2", &slot2, ImGuiWindowFlags_NoTitleBar) {
+                        twopos = ImGui::GetWindowPos();
+                        twobar = ImGui::GetWindowSize();
+                }
         }
         if (slot3) {
                 ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot3_init_pos, ImGuiCond_FirstUseEver);
-                ImGui::Begin("show3", &slot3, ImGuiWindowFlags_NoTitleBar);
-                threepos = ImGui::GetWindowPos();
-                threebar = ImGui::GetWindowSize();
-                ImGui::End();
+                with_Window("show3", &slot3, ImGuiWindowFlags_NoTitleBar) {
+                        threepos = ImGui::GetWindowPos();
+                        threebar = ImGui::GetWindowSize();
+                }
         }
         if (slot4) {
                 ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot4_init_pos, ImGuiCond_FirstUseEver);
-                ImGui::Begin("show4", &slot4, ImGuiWindowFlags_NoTitleBar);
-                fourpos = ImGui::GetWindowPos();
-                fourbar = ImGui::GetWindowSize();
-                ImGui::End();
+                with_Window("show4", &slot4, ImGuiWindowFlags_NoTitleBar) {
+                        fourpos = ImGui::GetWindowPos();
+                        fourbar = ImGui::GetWindowSize();
+                }
         }
         if (slot5) {
                 ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot5_init_pos, ImGuiCond_FirstUseEver);
-                ImGui::Begin("show5", &slot5, ImGuiWindowFlags_NoTitleBar);
-                fivepos = ImGui::GetWindowPos();
-                fivebar = ImGui::GetWindowSize();
-                ImGui::End();
+                with_Window("show5", &slot5, ImGuiWindowFlags_NoTitleBar) {
+                        fivepos = ImGui::GetWindowPos();
+                        fivebar = ImGui::GetWindowSize();
+                }
         }
         if (slot6) {
                 ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot6_init_pos, ImGuiCond_FirstUseEver);
-                ImGui::Begin("show6", &slot6, ImGuiWindowFlags_NoTitleBar);
-                sixpos = ImGui::GetWindowPos();
-                sixbar = ImGui::GetWindowSize();
-                ImGui::End();
+                with_Window("show6", &slot6, ImGuiWindowFlags_NoTitleBar) {
+                        sixpos = ImGui::GetWindowPos();
+                        sixbar = ImGui::GetWindowSize();
+                }
         }
         if (showstats) {
                 ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(70, 70), ImGuiCond_FirstUseEver);
-                ImGui::Begin("stats", NULL);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
-                CenterImGuiText(std::vformat(
-                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
-                        std::make_format_args(onepos.x, onepos.y, onebar.x, onebar.y)));
-                CenterImGuiText(std::vformat(
-                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
-                        std::make_format_args(twopos.x, twopos.y, twobar.x, twobar.y)));
-                CenterImGuiText(std::vformat(
-                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
-                        std::make_format_args(threepos.x, threepos.y, threebar.x, threebar.y)));
-                CenterImGuiText(std::vformat(
-                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
-                        std::make_format_args(fourpos.x, fourpos.y, fourbar.x, fourbar.y)));
-                CenterImGuiText(std::vformat(
-                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
-                        std::make_format_args(fivepos.x, fivepos.y, fivebar.x, fivebar.y)));
-                CenterImGuiText(std::vformat(
-                        "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
-                        std::make_format_args(sixpos.x, sixpos.y, sixbar.x, sixbar.y)));
-                ImGui::End();
-                ImGui::PopStyleColor();
+                with_Window("stats", NULL) {
+                        set_StyleColor(ImGuiCol_Text, ImVec4(0, 0, 0, 1));
+                        CenterImGuiText(std::vformat(
+                                "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                                std::make_format_args(onepos.x, onepos.y, onebar.x, onebar.y)));
+                        CenterImGuiText(std::vformat(
+                                "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                                std::make_format_args(twopos.x, twopos.y, twobar.x, twobar.y)));
+                        CenterImGuiText(std::vformat(
+                                "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                                std::make_format_args(threepos.x, threepos.y, threebar.x, threebar.y)));
+                        CenterImGuiText(std::vformat(
+                                "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                                std::make_format_args(fourpos.x, fourpos.y, fourbar.x, fourbar.y)));
+                        CenterImGuiText(std::vformat(
+                                "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                                std::make_format_args(fivepos.x, fivepos.y, fivebar.x, fivebar.y)));
+                        CenterImGuiText(std::vformat(
+                                "SHOW1| X: {} . Y: {} | WIDTH: {} . HEIGHT: {}",
+                                std::make_format_args(sixpos.x, sixpos.y, sixbar.x, sixbar.y)));
+                }
         }
-
-        ImGui::PopStyleColor();
 };
 
 /// <summary>
