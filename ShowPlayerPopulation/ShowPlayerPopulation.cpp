@@ -11,6 +11,7 @@
 #include "bakkesmod/imgui/imgui_internal.h"
 
 #include "csv.hpp"
+#include "imgui_sugar.hpp"  // sugar comes with WRAPPERS!
 #include "implot.h"
 
 #include "HookedEvents.h"
@@ -29,7 +30,7 @@
 const std::string          ShowPlayerPopulation::CMD_PREFIX                 = "spp_";
 const std::chrono::seconds ShowPlayerPopulation::GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.100.16", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.169.34", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
 /// <summary>
@@ -343,18 +344,18 @@ void ShowPlayerPopulation::massage_graph_data() {
         // update every time difference in the list...
         for (size_t i : std::ranges::views::iota(0, static_cast<int>(graph_total_pop_data.t.size()))) {
                 graph_total_pop_data.xs[i] =
-                        static_cast<float>(duration_cast<minutes, float, seconds::period>(
-                                                   graph_total_pop_data.t[i].get_local_time() - now.get_local_time())
-                                                   .count());
+                        duration<float, minutes::period> {
+                                (graph_total_pop_data.t[i].get_local_time() - now.get_local_time())}
+                                .count();
         }
 
         for (const auto & entry : t.playlist_pop) {
                 PlaylistId playid = entry.first;
                 for (size_t i : std::ranges::views::iota(0, static_cast<int>(graph_data[playid].t.size()))) {
-                        graph_data[playid].xs[i] = static_cast<float>(
-                                duration_cast<minutes, float, seconds::period>(
-                                        graph_total_pop_data.t[i].get_local_time() - now.get_local_time())
-                                        .count());
+                        graph_data[playid].xs[i] =
+                                duration<float, minutes::period> {
+                                        graph_total_pop_data.t[i].get_local_time() - now.get_local_time()}
+                                        .count();
                 }
         }
 
@@ -498,22 +499,6 @@ void ShowPlayerPopulation::print_graph_data() {
 }
 
 /// <summary>
-/// ImGui helper function that pushes some values that make an item appear "inactive"
-/// </summary>
-static inline void PushItemDisabled() {
-        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-}
-
-/// <summary>
-/// ImGui helper function that pops some values that make an item appear "inactive"
-/// </summary>
-static inline void PopItemDisabled() {
-        ImGui::PopItemFlag();
-        ImGui::PopStyleVar();
-}
-
-/// <summary>
 /// https://mastodon.gamedev.place/@dougbinks/99009293355650878
 /// </summary>
 static inline void AddUnderline(ImColor col_) {
@@ -593,7 +578,8 @@ void ShowPlayerPopulation::RenderSettings() {
         }
 
         ImGui::NewLine();
-        ImGui::Indent(20.0f);
+        ImGui::Separator();
+        ImGui::Indent(80.0f);
         ImGuiColorEditFlags cef = ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview
                                   | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB;
 
@@ -603,16 +589,15 @@ void ShowPlayerPopulation::RenderSettings() {
         if (open_popup1) {
                 ImGui::OpenPopup("overlaycolorpicker");
         }
-        if (ImGui::BeginPopup("overlaycolorpicker")) {
+        with_Popup("overlaycolorpicker") {
                 ImGui::Text("Choose the background color for the overlay.");
                 ImGui::Separator();
                 ImGui::ColorPicker4(
                         "##picker",
                         (float *)&chosen_overlay_color,
                         cef | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
-                ImGui::EndPopup();
         }
-        ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x * 20);
+        ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x * 14);
 
         bool open_popup2 = ImGui::Button("Choose color for the text on the overlay.");
         ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -620,18 +605,16 @@ void ShowPlayerPopulation::RenderSettings() {
         if (open_popup2) {
                 ImGui::OpenPopup("overlaytextcolorpicker");
         }
-        if (ImGui::BeginPopup("overlaytextcolorpicker")) {
+        with_Popup("overlaytextcolorpicker") {
                 ImGui::Text("Choose the text color for the overlay.");
                 ImGui::Separator();
                 ImGui::ColorPicker4(
                         "##picker",
                         (float *)&chosen_overlay_text_color,
                         cef | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
-                ImGui::EndPopup();
         }
-
         ImGui::Separator();
-        ImGui::Unindent(20.0f);
+        ImGui::Unindent(80.0f);
         ImGui::NewLine();
         // show in main menu, show in game, show in playlist menu | flags
         if (ImGui::Button("CHECK POPULATION NOW")) {
@@ -710,56 +693,52 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::EndTooltip();
         }
 
-        if (bkeep) {
-                PushItemDisabled();
-        }
-
-        ImGui::SameLine(300.0f, 200.0f);
-        static bool popup = false;
-        if (ImGui::Button("PRUNE DATA FILE?")) {
-                popup = true;
-                ImGui::OpenPopup("PRUNE_DATA_CONFIRM");
-        }
-        if (ImGui::BeginPopupModal(
-                    "PRUNE_DATA_CONFIRM",
-                    &popup,
-                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration)) {
-                ImGui::SetWindowSize(ImVec2(300.0f, 60.0f), ImGuiCond_Always);
-                CenterImGuiText("Are you sure you want to prune your data?");
-                ImGuiStyle & style  = ImGui::GetStyle();
-                float        width  = 0.0f;
-                width              += 80.0f;  // fixed size button 1
-                width              += style.ItemSpacing.x;
-                width              += 50.0f;  // because of the sameline + spacing
-                width              += 80.0f;  // fixed size button 2
-                AlignForWidth(width, 0.5f);
-                if (ImGui::Button("yes", ImVec2(80, 20))) {
-                        ImGui::CloseCurrentPopup();
-                        print_bank_info();
-                        prune_data();
+        {  // because cond_Disabled(flag), disables the following if flag is true
+                set_Disabled(bkeep);
+                ImGui::SameLine(300.0f, 200.0f);
+                static bool popup = false;
+                if (ImGui::Button("PRUNE DATA FILE?")) {
+                        popup = true;
+                        ImGui::OpenPopup("PRUNE_DATA_CONFIRM");
                 }
-                ImGui::SameLine(0.0f, 50.0f);
-                if (ImGui::Button("no", ImVec2(80, 20))) {
-                        // write_data_to_file();
-                        print_graph_data();
-                        ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-        }
 
-        CVarWrapper hrs_cvar = cvarManager->getCvar(CMD_PREFIX + "hours_kept");
-        int         hrs      = hrs_cvar.getIntValue();
-        ImGui::SliderScalar(
-                "How long should data be kept(hours)",
-                ImGuiDataType_U8,
-                &hrs,
-                &hours_min,
-                &hours_max,
-                "%d");
-        hrs = std::max(hours_min, std::min(hours_max, hrs));
-        hrs_cvar.setValue(hrs);
-        if (bkeep) {
-                PopItemDisabled();
+                with_PopupModal(
+                        "PRUNE_DATA_CONFIRM",
+                        &popup,
+                        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration) {
+                        ImGui::SetWindowSize(ImVec2(300.0f, 60.0f), ImGuiCond_Always);
+                        CenterImGuiText("Are you sure you want to prune your data?");
+                        ImGuiStyle & style  = ImGui::GetStyle();
+                        float        width  = 0.0f;
+                        width              += 80.0f;  // fixed size button 1
+                        width              += style.ItemSpacing.x;
+                        width              += 50.0f;  // because of the sameline + spacing
+                        width              += 80.0f;  // fixed size button 2
+                        AlignForWidth(width, 0.5f);
+                        if (ImGui::Button("yes", ImVec2(80, 20))) {
+                                ImGui::CloseCurrentPopup();
+                                print_bank_info();
+                                prune_data();
+                        }
+                        ImGui::SameLine(0.0f, 50.0f);
+                        if (ImGui::Button("no", ImVec2(80, 20))) {
+                                write_data_to_file();
+                                print_graph_data();
+                                ImGui::CloseCurrentPopup();
+                        }
+                }
+
+                CVarWrapper hrs_cvar = cvarManager->getCvar(CMD_PREFIX + "hours_kept");
+                int         hrs      = hrs_cvar.getIntValue();
+                ImGui::SliderScalar(
+                        "How long should data be kept(hours)",
+                        ImGuiDataType_U8,
+                        &hrs,
+                        &hours_min,
+                        &hours_max,
+                        "%d");
+                hrs = std::max(hours_min, std::min(hours_max, hrs));
+                hrs_cvar.setValue(hrs);
         }
 
         ImGui::NewLine();
@@ -773,8 +752,7 @@ void ShowPlayerPopulation::RenderSettings() {
         ImGui::SameLine();
         ImGui::TextUnformatted("BASED ON VALUES THAT HAVE BEEN SAVED LOCALLY.");
 
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.2f, 0.8f, 1.0f));
-
+        set_StyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.2f, 0.8f, 1.0f));
         plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
         if (has_graph_data && (data_header_is_open = ImGui::CollapsingHeader("Data"))) {
                 massage_graph_data();
@@ -858,7 +836,7 @@ void ShowPlayerPopulation::RenderSettings() {
                         ImPlot::EndPlot();
                 }
                 // Maybe a list with selectable elements
-                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.1f, 0.0f, 0.7f));
+                set_StyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.1f, 0.0f, 0.7f));
                 ImGui::BeginColumns(
                         "graphselectables_total_pop",
                         6,
@@ -892,22 +870,15 @@ void ShowPlayerPopulation::RenderSettings() {
                                 if (line < bmhelper::playlist_categories[category].size()) {
                                         PlaylistId playid  = bmhelper::playlist_categories[category][line];
                                         bool       enabled = graph_flags[bmhelper::playlist_categories[category][line]];
-                                        if (!enabled) {
-                                                PushItemDisabled();
-                                        }
+                                        set_Disabled(!enabled);
                                         ImGui::Selectable(
                                                 bmhelper::playlist_ids_str_spaced[playid].c_str(),
                                                 &graph_flags_selected[playid]);
-
-                                        if (!enabled) {
-                                                PopItemDisabled();
-                                        }
                                 }
                                 ImGui::NextColumn();
                         }
                 }
                 ImGui::EndColumns();
-                ImGui::PopStyleColor();
         }
 
         // ADD A BIG OL' DISCLAIMER-EXPLANATION DOWN HERE ON HOW THINGS WORK!
@@ -936,7 +907,6 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::NewLine();
                 ImGui::SetWindowFontScale(1.0f);
         }
-        ImGui::PopStyleColor();
 }
 
 /// <summary>
@@ -1217,18 +1187,15 @@ void ShowPlayerPopulation::Render() {
                                 "pop_horiz_tot",
                                 6,
                                 ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
-                        AlignForWidth(ImGui::GetCursorPos().x + ImGui::CalcTextSize("Total Players Online:").x);
-                        ImGui::TextUnformatted("Total Players Online:");
+                        CenterImGuiText("Total Players Online:");
                         AddUnderline(col_black);
                         ImGui::NextColumn();
                         CenterImGuiText(std::to_string(get_last_bank_entry().total_pop));
                         ImGui::NextColumn();
-                        AlignForWidth(ImGui::GetCursorPos().x + ImGui::CalcTextSize("Total Population in a Game:").x);
-                        ImGui::TextUnformatted("Total Population in a Game:");
+                        CenterImGuiText("Total Population in a Game:");
                         AddUnderline(col_black);
                         ImGui::NextColumn();
                         CenterImGuiText(std::to_string(TOTAL_IN_GAME_POP));
-                        ImGui::NextColumn();
                         ImGui::EndColumns();
 
                         size_t mxlines = 0;
