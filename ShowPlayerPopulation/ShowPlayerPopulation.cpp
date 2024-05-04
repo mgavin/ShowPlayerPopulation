@@ -1274,9 +1274,6 @@ std::string ShowPlayerPopulation::GetPluginName() {
 /// (ImGui) Code called while rendering your menu window
 /// </summary>
 void ShowPlayerPopulation::Render() {
-        if (!overlay_wnd) {
-                overlay_wnd = ImGui::GetCurrentWindow();
-        }
         if ((in_main_menu && show_in_main_menu) || (in_game_menu && show_in_game_menu)
             || (in_playlist_menu && show_in_playlist_menu)) {
                 // SHOW THE DAMN NUMBERS, JIM!

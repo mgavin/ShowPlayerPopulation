@@ -57,17 +57,14 @@ private:
         ImFont * overlay_font_22           = nullptr;
         ImVec4   chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
         ImVec4   chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
+        ImVec4   chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
+        ImVec4   chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
         ImColor  col_black                 = ImColor {
-        ImVec4  chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
-        ImVec4  chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
-        ImColor col_black                 = ImColor {
                 ImVec4 {0.0f, 0.0f, 0.0f, 1.0f}
         };
         ImColor col_white = ImColor {
                 ImVec4 {1.0f, 1.0f, 1.0f, 1.0f}
         };
-
-        ImGuiWindow * overlay_wnd = nullptr;
 
         // miscellaneous helper data. graphing should go here.
         struct thrair {  // three pair
