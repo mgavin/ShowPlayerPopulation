@@ -7,20 +7,9 @@
 
 #include "bmhelper.h"
 #include "imgui.h"
-#include "implot.h"
 
-/*
- * SAMPLE:
- *
- * 13219:[19:48:07] [bakkesmod] [class ShowPlayerPopulation] POPULATION UPDATED AT TIME:
- 2024-04-08T00:48:07.8930216+0000, TIMES UPDATED: 0,  POPULATION: 326275
- * 13272:[19:49:46] [bakkesmod] [class ShowPlayerPopulation] POPULATION UPDATED AT TIME:
- 2024-04-08T00:49:46.8816692+0000, TIMES UPDATED: 1,  POPULATION: 325712
- * 13426:[19:54:48] [bakkesmod] [class ShowPlayerPopulation] POPULATION UPDATED AT TIME:
- 2024-04-08T00:54:48.8792777+0000, TIMES UPDATED: 2,  POPULATION: 324136
- * 13578:[19:59:50] [bakkesmod] [class ShowPlayerPopulation] POPULATION UPDATED AT TIME:
- 2024-04-08T00:59:50.8810702+0000, TIMES UPDATED: 3,  POPULATION: 322139
- */
+#include "bakkesmod/imgui/imgui_internal.h"
+#include "imgui_sugar.hpp"
 
 class ShowPlayerPopulation :
         public BakkesMod::Plugin::BakkesModPlugin,
@@ -54,6 +43,8 @@ private:
         // flags for different points in the plugin
         bool is_overlay_open       = false;
         bool lock_overlay          = false;
+        bool lock_overlay_columns  = false;
+        bool show_overlay_borders  = false;
         bool in_main_menu          = false;
         bool in_playlist_menu      = false;
         bool in_game_menu          = false;
@@ -67,11 +58,16 @@ private:
         ImVec4   chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
         ImVec4   chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
         ImColor  col_black                 = ImColor {
+        ImVec4  chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
+        ImVec4  chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
+        ImColor col_black                 = ImColor {
                 ImVec4 {0.0f, 0.0f, 0.0f, 1.0f}
         };
         ImColor col_white = ImColor {
                 ImVec4 {1.0f, 1.0f, 1.0f, 1.0f}
         };
+
+        ImGuiWindow * overlay_wnd = nullptr;
 
         // miscellaneous helper data. graphing should go here.
         struct thrair {  // three pair
@@ -162,6 +158,9 @@ private:
         // helper functions
         ShowPlayerPopulation::token get_first_bank_entry();
         ShowPlayerPopulation::token get_last_bank_entry();
+        void                        clear_graph_total_pop_data();
+        void                        clear_graph_data();
+        void                        clear_graph_flags();
         std::string                 get_current_datetime_str();
         std::chrono::zoned_seconds  get_timepoint_from_str(std::string);
         void                        SET_WHICH_MENU_I_AM_IN();
@@ -191,3 +190,33 @@ public:
         bool        IsActiveOverlay() override;
         bool        ShouldBlockInput() override;
 };
+
+// imgui_sugar.hpp additional code:
+
+namespace ImGuiSugar {
+        /// <summary>
+        /// ImGui helper function that pushes some values that make an item appear "inactive"
+        /// </summary>
+        inline void PushItemDisabled() {
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+        }
+
+        /// <summary>
+        /// ImGui helper function that pops some values that make an item appear "inactive"
+        /// </summary>
+        inline void PopItemDisabled() {
+                ImGui::PopItemFlag();
+                ImGui::PopStyleVar();
+        }
+}  // namespace ImGuiSugar
+
+#define IMGUI_SUGAR_PARENT_PARENT_IF_SCOPED_VOID_0(BEGIN, END, COND)                                             \
+        using bg = ImGuiSugar::BooleanGuard<true>;                                                               \
+        std::unique_ptr<bg> IMGUI_SUGAR_CONCAT1(_ui_scope_, __LINE__);                                           \
+        if (COND) {                                                                                              \
+                IMGUI_SUGAR_CONCAT1(_ui_scope_, __LINE__) = std::make_unique<bg>(IMGUI_SUGAR_ES_0(BEGIN), &END); \
+        }
+
+#define set_Disabled(flag) \
+        IMGUI_SUGAR_PARENT_PARENT_IF_SCOPED_VOID_0(ImGuiSugar::PushItemDisabled, ImGuiSugar::PopItemDisabled, flag)

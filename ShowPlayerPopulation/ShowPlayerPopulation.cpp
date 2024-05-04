@@ -6,41 +6,26 @@
 #include <format>
 #include <fstream>
 #include <ranges>
-#include <ratio>
-
-#include "bakkesmod/imgui/imgui_internal.h"
 
 #include "csv.hpp"
-#include "imgui_sugar.hpp"  // sugar comes with WRAPPERS!
 #include "implot.h"
 
 #include "HookedEvents.h"
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
-/*
- *
- *  - cleanup code
- * todo: alpha release:
- *  - take out superfluous options used for testing
- *       .   make a new branch to clean up for "release"
- *
- */
-
 const std::string          ShowPlayerPopulation::CMD_PREFIX                 = "spp_";
 const std::chrono::seconds ShowPlayerPopulation::GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "0.169.34", /*UNUSED*/ NULL);
-std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "1.0.8", /*UNUSED*/ NULL);
+std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 /// <summary>
 /// do the following when your plugin is loaded
-///
-/// is cvar manager only like, guaranteed in here? what the fuck??
 /// </summary>
 void ShowPlayerPopulation::onLoad() {
         // initialize things
-        _globalCvarManager        = cvarManager;
+        _globalCVarManager        = cvarManager;
         HookedEvents::gameWrapper = gameWrapper;
 
         // ImGuiIO & io = ImGui::GetIO();
@@ -143,6 +128,24 @@ void ShowPlayerPopulation::init_cvars() {
         lock_overlay_cv.addOnValueChanged(
                 [this](std::string old_value, CVarWrapper new_value) { lock_overlay = new_value.getBoolValue(); });
 
+        CVarWrapper lock_overlay_columns_cv = cvarManager->registerCvar(
+                CMD_PREFIX + "flag_lock_overlay_columns",
+                "0",
+                "Flag for locking the overlay's columns",
+                false);
+        lock_overlay_columns_cv.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
+                lock_overlay_columns = new_value.getBoolValue();
+        });
+
+        CVarWrapper show_overlay_borders_cv = cvarManager->registerCvar(
+                CMD_PREFIX + "flag_show_overlay_borders",
+                "0",
+                "Flag for showing the overlay's borders",
+                false);
+        show_overlay_borders_cv.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
+                show_overlay_borders = new_value.getBoolValue();
+        });
+
         CVarWrapper show_menu_cv = cvarManager->registerCvar(
                 CMD_PREFIX + "flag_show_in_menu",
                 "0",
@@ -242,6 +245,12 @@ void ShowPlayerPopulation::init_hooked_events() {
 void ShowPlayerPopulation::init_graph_data() {
         using namespace std::chrono;
         using namespace std::chrono_literals;
+
+        // clear graph data, just in case it came from a previous time where it had data
+        // if it doesn't have data already, then this effectively does nothing
+        clear_graph_total_pop_data();
+        clear_graph_data();
+        clear_graph_flags();
 
         zoned_seconds now {current_zone(), time_point_cast<seconds>(system_clock::now())};
         for (const token & t : bank) {
@@ -352,7 +361,7 @@ void ShowPlayerPopulation::massage_graph_data() {
                 for (size_t i : std::ranges::views::iota(0, static_cast<int>(graph_data[playid].t.size()))) {
                         graph_data[playid].xs[i] =
                                 duration<float, minutes::period> {
-                                        graph_total_pop_data.t[i].get_local_time() - now.get_local_time()}
+                                        graph_data[playid].t[i].get_local_time() - now.get_local_time()}
                                         .count();
                 }
         }
@@ -364,9 +373,9 @@ void ShowPlayerPopulation::massage_graph_data() {
 /// Put the data in a representable format.
 /// </summary>
 void ShowPlayerPopulation::prepare_data() {
-        const std::map<PlaylistId, int> & playlist_population = get_last_bank_entry().playlist_pop;
-
         // prepare data to be shown
+
+        const std::map<PlaylistId, int> & playlist_population = get_last_bank_entry().playlist_pop;
 
         // clear persistent data that's used elsewhere :}
         population_data.clear();
@@ -614,16 +623,43 @@ void ShowPlayerPopulation::RenderSettings() {
         ImGui::Separator();
         ImGui::Unindent(80.0f);
         ImGui::NewLine();
-        // show in main menu, show in game, show in playlist menu | flags
+
+        ImGui::SetCursorPosX(322.0f);
         if (ImGui::Button("CHECK POPULATION NOW")) {
                 gameWrapper->Execute([this](GameWrapper * gw) { CHECK_NOW(); });
         }
 
         ImGui::NewLine();
 
+        // show in main menu, show in game, show in playlist menu | flags
         if (ImGui::Checkbox("Lock overlay?", &lock_overlay)) {
-                CVarWrapper cvw = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay");
+                CVarWrapper cvw  = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay");
+                CVarWrapper cvwc = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay_columns");
                 cvw.setValue(lock_overlay);
+                if (!cvwc.getBoolValue()) {
+                        cvwc.setValue(lock_overlay);
+                }
+        }
+
+        ImGui::SameLine(0, 50.0f);
+        if (ImGui::Checkbox("Lock overlay columns?", &lock_overlay_columns)) {
+                CVarWrapper cvw  = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay");
+                CVarWrapper cvwc = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay_columns");
+                CVarWrapper cvwb = cvarManager->getCvar(CMD_PREFIX + "flag_show_overlay_borders");
+                cvwc.setValue(lock_overlay_columns | cvwb.getBoolValue());
+                if (cvw.getBoolValue()) {
+                        cvw.setValue(lock_overlay_columns);
+                }
+        }
+
+        ImGui::SameLine(0, 50.0f);
+        if (ImGui::Checkbox("Hide overlay column's borders?", &show_overlay_borders)) {
+                CVarWrapper cvw  = cvarManager->getCvar(CMD_PREFIX + "flag_show_overlay_borders");
+                CVarWrapper cvwc = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay_columns");
+                cvw.setValue(show_overlay_borders);
+                if (!cvwc.getBoolValue()) {
+                        cvwc.setValue(show_overlay_borders);
+                }
         }
 
         if (ImGui::Checkbox("Show in main menu?", &show_in_main_menu)) {
@@ -691,8 +727,8 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::EndTooltip();
         }
 
-        {  // because cond_Disabled(flag), disables the following if flag is true
-                set_Disabled(bkeep);
+        {
+                set_Disabled(bkeep);  // if bkeep = true, the following is rendered inactive
                 ImGui::SameLine(300.0f, 200.0f);
                 static bool popup = false;
                 if (ImGui::Button("PRUNE DATA FILE?")) {
@@ -714,9 +750,11 @@ void ShowPlayerPopulation::RenderSettings() {
                         width              += 80.0f;  // fixed size button 2
                         AlignForWidth(width, 0.5f);
                         if (ImGui::Button("yes", ImVec2(80, 20))) {
-                                ImGui::CloseCurrentPopup();
                                 print_bank_info();
                                 prune_data();
+                                prepare_data();
+                                init_graph_data();
+                                ImGui::CloseCurrentPopup();
                         }
                         ImGui::SameLine(0.0f, 50.0f);
                         if (ImGui::Button("no", ImVec2(80, 20))) {
@@ -790,7 +828,7 @@ void ShowPlayerPopulation::RenderSettings() {
                                         "TOTAL POPULATION",
                                         graph_total_pop_data.xs.data(),
                                         graph_total_pop_data.ys.data(),
-                                        graph_total_pop_data.xs.size());
+                                        std::ssize(graph_total_pop_data.xs));
                         }
 
                         for (const auto & entry : graph_flags_selected) {
@@ -801,7 +839,7 @@ void ShowPlayerPopulation::RenderSettings() {
                                         bmhelper::playlist_ids_str_spaced[entry.first].c_str(),
                                         graph_data[entry.first].xs.data(),
                                         graph_data[entry.first].ys.data(),
-                                        graph_data[entry.first].xs.size());
+                                        std::ssize(graph_data[entry.first].xs));
                         }
                         plot_limits = ImPlot::GetPlotLimits();
 
@@ -882,29 +920,136 @@ void ShowPlayerPopulation::RenderSettings() {
 
         // ADD A BIG OL' DISCLAIMER-EXPLANATION DOWN HERE ON HOW THINGS WORK!
         if (ImGui::CollapsingHeader("How does this work?")) {
-                // ImGuiTextExplainingHowThisWorks();
-                ImGui::TextUnformatted("Well...");
+                with_Child("##howitworks", ImVec2(700, 300)) {
+                        ImGui::TextWrapped(
+                                "This plugin works by asking bakkesmod for playlist population information through its "
+                                "MatchmakingWrapper. But, to get the match making wrapper happy to be asked questions, "
+                                "some things happen first. To begin, you need to be connected to psyonix servers. From "
+                                "there, match making is initiated and then immediately cancelled. This produces the "
+                                "effective state that the plugin relies on without showing/starting that <queued "
+                                "matchmaking> event that plays -- where the game plays a sound and puts 'searching' at "
+                                "the top. When the matchmaking servers are queried for a match, they begin to send "
+                                "your client population information.");
+
+                        ImGui::TextWrapped(
+                                "This information for a population count is queried from your client every 5 seconds "
+                                "through Rocket League's own functions. Even though the actual population numbers tend "
+                                "to update every 5 minutes, querying every 5 seconds is done to accommodate for "
+                                "basically checking in the middle of the last update.");
+
+                        ImGui::TextWrapped(
+                                "Bakkesmod takes that information and makes it available to be queried. This plugin "
+                                "just asks for that population information when your client asks for it. If there's an "
+                                "update to be shown, then the population is shown through a window/overlay and "
+                                "reflected in the data you can see in the graphs under the Data tab.");
+
+                        // MAKE A VIDEO?
+                        ImGui::TextUnformatted("If you need me to tell you in video format, then look");
+                        TextURL("HERE", "https://youtu.be/WP_fkUnbRVU", true, false);
+                }
         }
 
         if (ImGui::CollapsingHeader("Some questions you may have...")) {
                 // SOME TEXT EXPLAINING SOME QUESTIONS
-                ImGui::SetWindowFontScale(1.1f);
-                ImGui::Indent(80.0f);
+                static const float INDENT_OFFSET = 40.0f;
+
+                // Question 1
+                ImGui::Indent(INDENT_OFFSET);
                 ImGui::TextUnformatted("WHERE IS THE DATA SAVED?");
                 AddUnderline(col_white);
-                ImGui::Unindent(80.0f);
+                ImGui::Unindent(INDENT_OFFSET);
                 ImGui::TextUnformatted(
                         std::vformat("{}", std::make_format_args(RECORD_POPULATION_FILE.generic_string())).c_str());
                 ImGui::NewLine();
 
-                ImGui::Indent(80.0f);
+                // Question 2
+                ImGui::Indent(INDENT_OFFSET);
                 ImGui::TextUnformatted("WHAT IF I CRASH AND HAVE A PROBLEM?");
                 AddUnderline(col_white);
-                ImGui::Unindent(80.0f);
+                ImGui::Unindent(INDENT_OFFSET);
                 ImGui::TextUnformatted("Raise an issue on the github page: ");
                 TextURL("HERE", "https://github.com/mgavin/ShowPlayerPopulation", true, false);
                 ImGui::NewLine();
-                ImGui::SetWindowFontScale(1.0f);
+
+                // Question 3
+                ImGui::Indent(INDENT_OFFSET);
+                ImGui::TextUnformatted("WHAT IS PRUNING?");
+                AddUnderline(col_white);
+                ImGui::Unindent(INDENT_OFFSET);
+                ImGui::TextWrapped(
+                        "Pruning is the process where data is fitted within the timeframe between now and the amount "
+                        "of hours(currently %d) you've chosen to keep. This process is irreversible from the in-game "
+                        "menu. Make a backup save of data if you want backups.",
+                        hours_kept);
+                ImGui::NewLine();
+
+                // Question 4
+                ImGui::Indent(INDENT_OFFSET);
+                ImGui::TextUnformatted("WHAT IS 'KEEP INDEFINITELY?'");
+                AddUnderline(col_white);
+                ImGui::Unindent(INDENT_OFFSET);
+                ImGui::TextWrapped(
+                        "This simply stops the plugin from pruning/trimming the data when the plugin is unloaded or "
+                        "the game is exited.");
+                ImGui::NewLine();
+
+                // Question 5
+                ImGui::Indent(INDENT_OFFSET);
+                ImGui::TextUnformatted("WHAT IS THE MAIN MENU?");
+                AddUnderline(col_white);
+                ImGui::Unindent(INDENT_OFFSET);
+                ImGui::TextWrapped("It's where you are when you're able to select the [Play] button.");
+                ImGui::NewLine();
+
+                // Question 6
+                ImGui::Indent(INDENT_OFFSET);
+                ImGui::TextUnformatted("WHAT IS THE PLAYLIST MENU?");
+                AddUnderline(col_white);
+                ImGui::Unindent(INDENT_OFFSET);
+                ImGui::TextWrapped("It's where you are when you're able to select different game modes.");
+                ImGui::NewLine();
+
+                // Question 7
+                ImGui::Indent(INDENT_OFFSET);
+                ImGui::TextUnformatted("WHAT IS THE PAUSE MENU IN GAME?");
+                AddUnderline(col_white);
+                ImGui::Unindent(INDENT_OFFSET);
+                ImGui::TextWrapped(
+                        "It's where you are when you are in a game and are able to select [Exit to Main Menu]");
+                ImGui::NewLine();
+
+                // Question 8
+                ImGui::Indent(INDENT_OFFSET);
+                ImGui::TextUnformatted("WHEN IS THE POPULATION INFORMATION SAVED?");
+                AddUnderline(col_white);
+                ImGui::Unindent(INDENT_OFFSET);
+                ImGui::TextWrapped(
+                        "When the plugin is unloaded or Rocket League is exited, the population data is saved.");
+                ImGui::NewLine();
+        }
+}
+
+/// <summary>
+/// Sets flags that help specify which portion of the menu the user is in.
+/// </summary>
+void ShowPlayerPopulation::SET_WHICH_MENU_I_AM_IN() {
+        // clear flags
+        in_main_menu = in_playlist_menu = in_game_menu = false;
+
+        // check what menu we're in when this gets triggered
+        MenuStackWrapper msw = gameWrapper->GetMenuStack();
+        if (msw) {
+                std::string menu_name = msw.GetTopMenu();
+                if (menu_name == "RootMenuMovie") {
+                        // set when on the main menu
+                        in_main_menu = true;
+                } else if (menu_name == "PlayMenuV4Movie") {
+                        // set after hitting [Play] on the main menu
+                        in_playlist_menu = true;
+                } else if (menu_name == "MidGameMenuMovie") {
+                        // set when opening up the menu during a game
+                        in_game_menu = true;
+                }
         }
 }
 
@@ -938,6 +1083,24 @@ ShowPlayerPopulation::token ShowPlayerPopulation::get_last_bank_entry() {
         }
 
         return bank.back();
+}
+
+void ShowPlayerPopulation::clear_graph_total_pop_data() {
+        graph_total_pop_data.t.clear();
+        graph_total_pop_data.xs.clear();
+        graph_total_pop_data.ys.clear();
+}
+void ShowPlayerPopulation::clear_graph_data() {
+        for (auto & item : std::ranges::views::values(graph_data)) {
+                item.t.clear();
+                item.xs.clear();
+                item.ys.clear();
+        }
+}
+void ShowPlayerPopulation::clear_graph_flags() {
+        for (auto & item : std::ranges::views::values(graph_flags)) {
+                item = false;
+        }
 }
 
 /// <summary>
@@ -1105,28 +1268,20 @@ std::string ShowPlayerPopulation::GetPluginName() {
         return "Show Player Population";
 }
 
-/// <summary>
-/// Helper function to add a notifier. Not sure if I'll use this.
-/// </summary>
-void ShowPlayerPopulation::add_notifier(
-        std::string                                   cmd_name,
-        std::function<void(std::vector<std::string>)> do_func,
-        std::string                                   desc,
-        byte                                          PERMISSIONS = NULL) const {
-        cvarManager->registerNotifier(CMD_PREFIX + cmd_name, do_func, desc, PERMISSIONS);
-}
-
 /* ------------------------- BEGIN TOGGLEMENU CODE ----------------------------- */
 
 /// <summary>
 /// (ImGui) Code called while rendering your menu window
 /// </summary>
 void ShowPlayerPopulation::Render() {
+        if (!overlay_wnd) {
+                overlay_wnd = ImGui::GetCurrentWindow();
+        }
         if ((in_main_menu && show_in_main_menu) || (in_game_menu && show_in_game_menu)
             || (in_playlist_menu && show_in_playlist_menu)) {
                 // SHOW THE DAMN NUMBERS, JIM!
-                ImGui::SetNextWindowSize(ImVec2(100, 100), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x - 200, 225), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowPos(ImVec2(10, 2), ImGuiCond_FirstUseEver);
                 set_StyleColor(ImGuiCol_WindowBg, chosen_overlay_color);
                 ImGuiWindowFlags flags = ImGuiWindowFlags_None | ImGuiWindowFlags_NoCollapse;
                 if (lock_overlay) {
@@ -1135,16 +1290,19 @@ void ShowPlayerPopulation::Render() {
                 with_Window("Hey, cutie", NULL, flags) {
                         set_StyleColor(ImGuiCol_Text, chosen_overlay_text_color);
                         ImGui::SetWindowFontScale(1.3f);
-                        // set_Font(overlay_font_22);
                         CenterImGuiText(std::vformat(
-                                                "POPULATIONS! LAST UPDATED: {0:%r} {0:%D}",
+                                                "PLAYLIST POPULATIONS! LAST UPDATED: {0:%r} {0:%D}",
                                                 std::make_format_args(get_last_bank_entry().zt))
                                                 .c_str());
                         ImGui::NewLine();
                         ImGui::Indent(20.0f);
                         if (ImGui::GetWindowWidth() <= (ImGui::GetIO().DisplaySize.x / 2.0f)) {
                                 // less than or equal to half of the width of the screen = "vertical layout"
-                                ImGui::BeginColumns("populationnums_vert", 2, ImGuiColumnsFlags_NoResize);
+                                ImGui::BeginColumns(
+                                        "populationnums_vert",
+                                        2,
+                                        ((lock_overlay_columns) ? ImGuiColumnsFlags_NoResize : 0)
+                                                | ((show_overlay_borders) ? ImGuiColumnsFlags_NoBorder : 0));
                                 ImGui::TextUnformatted("Total Players Online:");
                                 AddUnderline(col_black);
                                 ImGui::NextColumn();
@@ -1180,9 +1338,8 @@ void ShowPlayerPopulation::Render() {
                                 ImGui::EndColumns();
                         } else {
                                 // greater than half of the width of the screen = "horizontal layout"
-
                                 ImGui::BeginColumns(
-                                        "pop_horiz_tot",
+                                        "pop_nums_vert",
                                         6,
                                         ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
                                 CenterImGuiText("Total Players Online:");
@@ -1201,7 +1358,11 @@ void ShowPlayerPopulation::Render() {
                                         mxlines = std::max(mxlines, x.second.size());
                                 }
                                 // with_Font(overlay_font_18) {
-                                ImGui::BeginColumns("populationnums_horiz", 12, ImGuiColumnsFlags_NoResize);
+                                ImGui::BeginColumns(
+                                        "pop_nums_horiz",
+                                        12,
+                                        ((lock_overlay_columns) ? ImGuiColumnsFlags_NoResize : 0)
+                                                | ((show_overlay_borders) ? ImGuiColumnsFlags_NoBorder : 0));
                                 for (int line = 0; line < mxlines; ++line) {
                                         for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
                                                 if (line >= population_data[playstr].size()) {
@@ -1219,15 +1380,10 @@ void ShowPlayerPopulation::Render() {
                                                                                 bmhelper::playlist_ids_str_spaced[id]))
                                                                         .c_str());
                                                         ImGui::NextColumn();
-                                                        // MANUAL CENTERING? WTF ... the width isnt being correctly set.
+
                                                         std::string str =
                                                                 std::vformat("{}", std::make_format_args(pop));
-                                                        ImGui::SetCursorPosX(
-                                                                ImGui::GetCursorPosX()
-                                                                + ((ImGui::GetContentRegionAvailWidth()
-                                                                    - ImGui::CalcTextSize(str.c_str()).x)
-                                                                   * 0.5f));
-                                                        ImGui::TextUnformatted(str.c_str());
+                                                        CenterImGuiText(str);
                                                         ImGui::NextColumn();
                                                 }
                                         }
@@ -1316,21 +1472,21 @@ void ShowPlayerPopulation::Render() {
                                 std::make_format_args(sixpos.x, sixpos.y, sixbar.x, sixbar.y)));
                 }
         }
-};
+}
 
 /// <summary>
 /// do the following on menu open
 /// </summary>
 void ShowPlayerPopulation::OnOpen() {
         is_overlay_open = true;
-};
+}
 
 /// <summary>
 /// do the following on menu close
 /// </summary>
 void ShowPlayerPopulation::OnClose() {
         is_overlay_open = false;
-};
+}
 
 /// <summary>
 /// Returns the name of the menu to refer to it by
@@ -1338,7 +1494,7 @@ void ShowPlayerPopulation::OnClose() {
 /// <returns>The name used refered to by togglemenu</returns>
 std::string ShowPlayerPopulation::GetMenuName() {
         return "ShowPlayerPopulation";
-};
+}
 
 /// <summary>
 /// Returns a std::string to show as the title
@@ -1346,7 +1502,7 @@ std::string ShowPlayerPopulation::GetMenuName() {
 /// <returns>The title of the menu</returns>
 std::string ShowPlayerPopulation::GetMenuTitle() {
         return "";
-};
+}
 
 /// <summary>
 /// Is it the active overlay(window)?
@@ -1356,7 +1512,7 @@ std::string ShowPlayerPopulation::GetMenuTitle() {
 /// <returns>True/False for being the active overlay</returns>
 bool ShowPlayerPopulation::IsActiveOverlay() {
         return false;
-};
+}
 
 /// <summary>
 /// Should this block input from the rest of the program?
@@ -1367,7 +1523,7 @@ bool ShowPlayerPopulation::IsActiveOverlay() {
 /// ImGui::GetIO().WantCaptureKeyboard;`</returns>
 bool ShowPlayerPopulation::ShouldBlockInput() {
         return false;
-};
+}
 
 /* -------------------------- END TOGGLEMENU CODE ----------------------------- */
 
