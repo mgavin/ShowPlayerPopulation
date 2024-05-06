@@ -14,8 +14,20 @@
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
+/*
+ * TODO: [Difficulty/10]
+ *  - Save column sizes to memory. [4/10]
+ *  - Generate the RL SDK to see about window positions / playlist information. [7/10]
+ *  - New projects: auto forfeit and hide blueprints. [6/10]
+ *  - rewrite instant suite [6/10]
+ *  - FIX autosavereplay [2/10]
+ *  - nameplate colors. [10/10]
+ *
+ */
+
 const std::string          ShowPlayerPopulation::CMD_PREFIX                 = "spp_";
 const std::chrono::seconds ShowPlayerPopulation::GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
+imguihelper::OverlayHorizontalColumnsSettings ShowPlayerPopulation::h_cols  = {-1};
 
 BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "1.0.8", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
@@ -40,6 +52,7 @@ void ShowPlayerPopulation::onLoad() {
         init_cvars();
         init_hooked_events();
         init_graph_data();
+
         prepare_data();
         SET_WHICH_MENU_I_AM_IN();
 }
@@ -276,6 +289,20 @@ void ShowPlayerPopulation::init_graph_data() {
 
                 has_graph_data = true;
         }
+}
+
+/// <summary>
+/// Adds a settings handler to ImGui for saving plugin data in the imgui.ini file
+/// https://github.com/ocornut/imgui/issues/7489
+/// So far is used for column widths.
+/// </summary>
+void ShowPlayerPopulation::init_settings_handler() {
+        // ...
+        // need a fucking grab the context,
+        // add the settings handler manually to the context
+        // in the overlay
+        // "custom settings handler grabber just for this fucking overlay"
+        // because we have to use an old fucking version of imgui
 }
 
 /// <summary>
@@ -727,8 +754,7 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::EndTooltip();
         }
 
-        {
-                set_Disabled(bkeep);  // if bkeep = true, the following is rendered inactive
+        cond_Disabled(bkeep) {  // if bkeep = true, the following is rendered inactive
                 ImGui::SameLine(300.0f, 200.0f);
                 static bool popup = false;
                 if (ImGui::Button("PRUNE DATA FILE?")) {
@@ -828,7 +854,7 @@ void ShowPlayerPopulation::RenderSettings() {
                                         "TOTAL POPULATION",
                                         graph_total_pop_data.xs.data(),
                                         graph_total_pop_data.ys.data(),
-                                        std::ssize(graph_total_pop_data.xs));
+                                        std::size(graph_total_pop_data.xs));
                         }
 
                         for (const auto & entry : graph_flags_selected) {
@@ -839,7 +865,7 @@ void ShowPlayerPopulation::RenderSettings() {
                                         bmhelper::playlist_ids_str_spaced[entry.first].c_str(),
                                         graph_data[entry.first].xs.data(),
                                         graph_data[entry.first].ys.data(),
-                                        std::ssize(graph_data[entry.first].xs));
+                                        std::size(graph_data[entry.first].xs));
                         }
                         plot_limits = ImPlot::GetPlotLimits();
 
@@ -905,12 +931,13 @@ void ShowPlayerPopulation::RenderSettings() {
                 for (int line = 0; line < mxlines; ++line) {
                         for (const std::string & category : SHOWN_PLAYLIST_POPS) {
                                 if (line < bmhelper::playlist_categories[category].size()) {
-                                        PlaylistId playid  = bmhelper::playlist_categories[category][line];
-                                        bool       enabled = graph_flags[bmhelper::playlist_categories[category][line]];
-                                        set_Disabled(!enabled);
-                                        ImGui::Selectable(
-                                                bmhelper::playlist_ids_str_spaced[playid].c_str(),
-                                                &graph_flags_selected[playid]);
+                                        bool enabled = graph_flags[bmhelper::playlist_categories[category][line]];
+                                        cond_Disabled(!enabled) {
+                                                PlaylistId playid = bmhelper::playlist_categories[category][line];
+                                                ImGui::Selectable(
+                                                        bmhelper::playlist_ids_str_spaced[playid].c_str(),
+                                                        &graph_flags_selected[playid]);
+                                        }
                                 }
                                 ImGui::NextColumn();
                         }
@@ -1129,30 +1156,6 @@ std::chrono::zoned_seconds ShowPlayerPopulation::get_timepoint_from_str(std::str
 }
 
 /// <summary>
-/// Sets flags that help specify which portion of the menu the user is in.
-/// </summary>
-void ShowPlayerPopulation::SET_WHICH_MENU_I_AM_IN() {
-        // clear flags
-        in_main_menu = in_playlist_menu = in_game_menu = false;
-
-        // check what menu we're in when this gets triggered
-        MenuStackWrapper msw = gameWrapper->GetMenuStack();
-        if (msw) {
-                std::string menu_name = msw.GetTopMenu();
-                if (menu_name == "RootMenuMovie") {
-                        // set when on the main menu
-                        in_main_menu = true;
-                } else if (menu_name == "PlayMenuV4Movie") {
-                        // set after hitting [Play] on the main menu
-                        in_playlist_menu = true;
-                } else if (menu_name == "MidGameMenuMovie") {
-                        // set when opening up the menu during a game
-                        in_game_menu = true;
-                }
-        }
-}
-
-/// <summary>
 /// Records to a file the position of some windows I wanted to utilize in the future.
 /// this is a member function because I want access to *this data
 /// </summary>
@@ -1258,7 +1261,8 @@ void ShowPlayerPopulation::GET_DEFAULT_POP_NUMBER_PLACEMENTS() {
 /// </summary>
 /// <param name="ctx">AFAIK The pointer to the ImGui context</param>
 void ShowPlayerPopulation::SetImGuiContext(uintptr_t ctx) {
-        ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext *>(ctx));
+        plugin_ctx = reinterpret_cast<ImGuiContext *>(ctx);
+        ImGui::SetCurrentContext(plugin_ctx);
 }
 
 /// <summary>
@@ -1385,6 +1389,23 @@ void ShowPlayerPopulation::Render() {
                                                 }
                                         }
                                 }
+
+                                // every frame :/
+                                static bool exec_once = true;
+                                if (h_cols.colws[0] >= 0.0f && exec_once) {
+                                        exec_once = !exec_once;  // turn off
+                                        for (int i = 0; i < 12; ++i) {
+                                                ImGui::SetColumnWidth(i, h_cols.colws[i]);
+                                                ImGui::SetColumnOffset(i, h_cols.colos[i]);
+                                        }
+                                }
+                                if (!lock_overlay_columns) {
+                                        for (int i = 0; i < 12; ++i) {
+                                                h_cols.colws[i] = ImGui::GetColumnWidth(i);
+                                                h_cols.colos[i] = ImGui::GetColumnOffset(i);
+                                                ImGui::MarkIniSettingsDirty();
+                                        }
+                                }
                                 // }
                                 ImGui::EndColumns();
                         }
@@ -1399,7 +1420,7 @@ void ShowPlayerPopulation::Render() {
         if (slot1) {
                 ImGui::SetNextWindowSize(ImVec2(WIN_WIDTH, WIN_HEIGHT), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(slot1_init_pos, ImGuiCond_FirstUseEver);
-                with_Window("show1", &slot1, ImGuiWindowFlags_NoTitleBar) {
+                with_Window("##show1", &slot1, ImGuiWindowFlags_NoTitleBar) {
                         onepos = ImGui::GetWindowPos();
                         onebar = ImGui::GetWindowSize();
                 }
@@ -1471,11 +1492,109 @@ void ShowPlayerPopulation::Render() {
         }
 }
 
+// Settings Handlers that will mostly be copied code from ImGui internals
+static void * ImGuiSettingsReadOpen(ImGuiContext * ctx, ImGuiSettingsHandler * handler, const char * name) {
+        // really, only one entry should exist here. There's no  support for multiple instantiations
+        if (strcmp(name, "HorizontalColumnsData") != 0) {
+                // should never reach here
+                // throw std::exception {"somehow imgui setting but like, not"};
+        }
+        return reinterpret_cast<void *>(&ShowPlayerPopulation::h_cols);
+}
+static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void * entry, const char * line) {
+        ShowPlayerPopulation::h_cols = *(imguihelper::OverlayHorizontalColumnsSettings *)entry;
+        float w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12;
+        float o1, o2, o3, o4, o5, o6, o7, o8, o9, o10, o11, o12;
+        if (sscanf(line,
+                   "width1=%f,width2=%f,width3=%f,width4=%f,width5=%f,width6=%f,width7=%f,width8=%f,width9=%f,width10=%"
+                   "f,width11=%f,width12=%f",
+                   &w1,
+                   &w2,
+                   &w3,
+                   &w4,
+                   &w5,
+                   &w6,
+                   &w7,
+                   &w8,
+                   &w9,
+                   &w10,
+                   &w11,
+                   &w12)
+            == 12) {
+                ShowPlayerPopulation::h_cols.colws[0]  = w1;
+                ShowPlayerPopulation::h_cols.colws[1]  = w2;
+                ShowPlayerPopulation::h_cols.colws[2]  = w3;
+                ShowPlayerPopulation::h_cols.colws[3]  = w4;
+                ShowPlayerPopulation::h_cols.colws[4]  = w5;
+                ShowPlayerPopulation::h_cols.colws[5]  = w6;
+                ShowPlayerPopulation::h_cols.colws[6]  = w7;
+                ShowPlayerPopulation::h_cols.colws[7]  = w8;
+                ShowPlayerPopulation::h_cols.colws[8]  = w9;
+                ShowPlayerPopulation::h_cols.colws[9]  = w10;
+                ShowPlayerPopulation::h_cols.colws[10] = w11;
+                ShowPlayerPopulation::h_cols.colws[11] = w12;
+        }
+        if (sscanf(line,
+                   "offset1=%f,offset2=%f,offset3=%f,offset4=%f,offset5=%f,offset6=%f,offset7=%f,offset8=%f,offset9=%f,"
+                   "offset10=%f,offset11=%f,offset12=%f",
+                   &o1,
+                   &o2,
+                   &o3,
+                   &o4,
+                   &o5,
+                   &o6,
+                   &o7,
+                   &o8,
+                   &o9,
+                   &o10,
+                   &o11,
+                   &o12)
+            == 12) {
+                ShowPlayerPopulation::h_cols.colos[0]  = o1;
+                ShowPlayerPopulation::h_cols.colos[1]  = o2;
+                ShowPlayerPopulation::h_cols.colos[2]  = o3;
+                ShowPlayerPopulation::h_cols.colos[3]  = o4;
+                ShowPlayerPopulation::h_cols.colos[4]  = o5;
+                ShowPlayerPopulation::h_cols.colos[5]  = o6;
+                ShowPlayerPopulation::h_cols.colos[6]  = o7;
+                ShowPlayerPopulation::h_cols.colos[7]  = o8;
+                ShowPlayerPopulation::h_cols.colos[8]  = o9;
+                ShowPlayerPopulation::h_cols.colos[9]  = o10;
+                ShowPlayerPopulation::h_cols.colos[10] = o11;
+                ShowPlayerPopulation::h_cols.colos[11] = o12;
+        }
+}
+
+static void ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * handler, ImGuiTextBuffer * buf) {
+        buf->reserve(buf->size() + sizeof(ShowPlayerPopulation::h_cols));
+        buf->appendf("[%s][%s]\n", handler->TypeName, "HorizontalColumnsData");
+        // 12 is the number of horizontal columns represented in this data structure
+        buf->appendf("width%d=%0.3f", 1, ShowPlayerPopulation::h_cols.colws[0]);
+        for (int i = 1; i < 12; ++i) {
+                buf->appendf(",width%d=%0.3f", i + 1, ShowPlayerPopulation::h_cols.colws[i]);
+        }
+        buf->append("\n");
+        buf->appendf("offset%d=%0.3f", 1, ShowPlayerPopulation::h_cols.colos[0]);
+        for (int i = 1; i < 12; ++i) {
+                buf->appendf(",offset%d=%0.3f", i + 1, ShowPlayerPopulation::h_cols.colos[i]);
+        }
+        buf->append("\n");
+}
+
 /// <summary>
 /// do the following on menu open
 /// </summary>
 void ShowPlayerPopulation::OnOpen() {
         is_overlay_open = true;
+
+        ImGuiSettingsHandler ini_handler;
+        ini_handler.TypeName   = "ShowPlayerPopulation";
+        ini_handler.TypeHash   = ImHashStr("ShowPlayerPopulation");
+        ini_handler.ReadOpenFn = &ImGuiSettingsReadOpen;
+        ini_handler.ReadLineFn = &ImGuiSettingsReadLine;
+        ini_handler.WriteAllFn = &ImGuiSettingsWriteAll;
+
+        (plugin_ctx->SettingsHandlers).push_back(ini_handler);
 }
 
 /// <summary>
@@ -1483,6 +1602,13 @@ void ShowPlayerPopulation::OnOpen() {
 /// </summary>
 void ShowPlayerPopulation::OnClose() {
         is_overlay_open = false;
+
+        ImGuiSettingsHandler * igsh = ImGui::FindSettingsHandler("ShowPlayerPopulation");
+        if (igsh == nullptr) {
+                return;
+        }
+
+        (plugin_ctx->SettingsHandlers).erase(igsh);
 }
 
 /// <summary>

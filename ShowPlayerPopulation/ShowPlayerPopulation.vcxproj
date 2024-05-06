@@ -84,6 +84,7 @@
   <ItemGroup>
     <ClInclude Include="..\imgui_sugar\imgui_sugar.hpp" />
     <ClInclude Include="..\implot\implot.h" />
+    <ClInclude Include="imguihelper.h" />
     <ClInclude Include="ShowPlayerPopulation.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.h" />

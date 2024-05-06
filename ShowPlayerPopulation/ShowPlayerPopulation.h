@@ -7,6 +7,7 @@
 
 #include "bmhelper.h"
 #include "imgui.h"
+#include "imguihelper.h"
 
 #include "bakkesmod/imgui/imgui_internal.h"
 #include "imgui_sugar.hpp"
@@ -53,13 +54,13 @@ private:
         bool show_in_game_menu     = false;
         bool DO_CHECK              = false;
 
-        ImFont * overlay_font_18           = nullptr;
-        ImFont * overlay_font_22           = nullptr;
-        ImVec4   chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
-        ImVec4   chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
-        ImVec4   chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
-        ImVec4   chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
-        ImColor  col_black                 = ImColor {
+        // ImGui related variables
+        ImGuiContext * plugin_ctx;
+        ImFont *       overlay_font_18           = nullptr;
+        ImFont *       overlay_font_22           = nullptr;
+        ImVec4         chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
+        ImVec4         chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
+        ImColor        col_black                 = ImColor {
                 ImVec4 {0.0f, 0.0f, 0.0f, 1.0f}
         };
         ImColor col_white = ImColor {
@@ -90,8 +91,6 @@ private:
                 return tmp;
         }();
         std::map<PlaylistId, bool> graph_flags_selected {graph_flags};
-
-        void print_graph_data();
 
         // members pertaining to data functionality
         struct token {
@@ -131,7 +130,6 @@ private:
         ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
         ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos, slot6_init_pos;
         void   SNAPSHOT_PLAYLIST_POSITIONS();
-        void   print_bank_info();
         void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 
         // these may end up going away
@@ -139,29 +137,43 @@ private:
         bool curiouser;
 
         // member functions pertaining to general functionality
+        // init
         void init_datafile();
         void init_cvars();
         void init_hooked_events();
         void init_graph_data();
-        void CHECK_NOW();
-        void record_population();
-        void prepare_data();
+        void init_settings_handler();
 
+        // provided functionality
+        void record_population();
         void add_last_entry_to_graph_data();
         void massage_graph_data();
+        void prepare_data();
         void prune_data();
         void write_data_to_file();
+        void CHECK_NOW();
+
+        // debug/print
+        void print_bank_info();
+        void print_graph_data();
 
         // helper functions
+        void SET_WHICH_MENU_I_AM_IN();
+
+        // deque -help
         ShowPlayerPopulation::token get_first_bank_entry();
         ShowPlayerPopulation::token get_last_bank_entry();
-        void                        clear_graph_total_pop_data();
-        void                        clear_graph_data();
-        void                        clear_graph_flags();
-        std::string                 get_current_datetime_str();
-        std::chrono::zoned_seconds  get_timepoint_from_str(std::string);
-        void                        SET_WHICH_MENU_I_AM_IN();
 
+        // clear -help
+        void clear_graph_total_pop_data();
+        void clear_graph_data();
+        void clear_graph_flags();
+
+        // chrono -help
+        std::string                get_current_datetime_str();
+        std::chrono::zoned_seconds get_timepoint_from_str(std::string);
+
+        // bakkesmod -help
         void add_notifier(
                 std::string                                   cmd_name,
                 std::function<void(std::vector<std::string>)> do_func,
@@ -186,6 +198,10 @@ public:
         std::string GetMenuTitle() override;
         bool        IsActiveOverlay() override;
         bool        ShouldBlockInput() override;
+
+        // THE ONLY THING I CANT SAVE FROM BEING PUBLIC? OH NOOOOO~
+        // I COULD FAKE IT BY HIDING IT SOMEWHERE ELSE, BUT THAT WOULD BE KINDA LAME
+        static imguihelper::OverlayHorizontalColumnsSettings h_cols;
 };
 
 // imgui_sugar.hpp additional code:
@@ -208,12 +224,11 @@ namespace ImGuiSugar {
         }
 }  // namespace ImGuiSugar
 
-#define IMGUI_SUGAR_PARENT_PARENT_IF_SCOPED_VOID_0(BEGIN, END, COND)                                             \
-        using bg = ImGuiSugar::BooleanGuard<true>;                                                               \
-        std::unique_ptr<bg> IMGUI_SUGAR_CONCAT1(_ui_scope_, __LINE__);                                           \
-        if (COND) {                                                                                              \
-                IMGUI_SUGAR_CONCAT1(_ui_scope_, __LINE__) = std::make_unique<bg>(IMGUI_SUGAR_ES_0(BEGIN), &END); \
-        }
+#define IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)                                                  \
+        if (const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> _ui_scope_guard =                             \
+                    ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(IMGUI_SUGAR_ES_0(BEGIN), &END)) \
+                            : (nullptr));                                                                       \
+            true)
 
-#define set_Disabled(flag) \
-        IMGUI_SUGAR_PARENT_PARENT_IF_SCOPED_VOID_0(ImGuiSugar::PushItemDisabled, ImGuiSugar::PopItemDisabled, flag)
+#define cond_Disabled(flag) \
+        IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(ImGuiSugar::PushItemDisabled, ImGuiSugar::PopItemDisabled, flag)
