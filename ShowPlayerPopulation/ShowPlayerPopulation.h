@@ -44,8 +44,9 @@ private:
         // flags for different points in the plugin
         bool is_overlay_open       = false;
         bool lock_overlay          = false;
-        bool lock_overlay_columns  = false;
+        bool show_overlay_header   = true;
         bool show_overlay_borders  = false;
+        bool lock_overlay_columns  = false;
         bool in_main_menu          = false;
         bool in_playlist_menu      = false;
         bool in_game_menu          = false;

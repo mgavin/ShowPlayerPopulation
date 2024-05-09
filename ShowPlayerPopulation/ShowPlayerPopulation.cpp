@@ -16,7 +16,8 @@
 
 /*
  * TODO: [Difficulty/10]
- *  - Save column sizes to memory. [4/10]
+ *  - Do other imgui stuff saved to imgui ini [3/10]
+ *  - add hide titlebar [1/10]
  *  - Generate the RL SDK to see about window positions / playlist information. [7/10]
  *  - New projects: auto forfeit and hide blueprints. [6/10]
  *  - rewrite instant suite [6/10]
@@ -125,11 +126,6 @@ void ShowPlayerPopulation::init_cvars() {
         show_overlay_cvar.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
                 if (is_overlay_open != new_value.getBoolValue()) {
                         gameWrapper->Execute([this](GameWrapper * gw) {
-                                ImGuiContext * igc = ImGui::GetCurrentContext();
-                                if (igc != nullptr) {
-                                        igc->Style.Alpha = 1.0f;
-                                }
-
                                 // look, sometimes cvarManager just gets fucking lost.
                                 cvarManager->executeCommand("togglemenu ShowPlayerPopulation", false);
                         });
@@ -199,6 +195,7 @@ void ShowPlayerPopulation::init_cvars() {
                 false);
         keep_cvar.addOnValueChanged(
                 [this](std::string old_value, CVarWrapper new_value) { keep_all_data = new_value.getBoolValue(); });
+        keep_all_data = keep_cvar.getBoolValue();
 }
 
 /// <summary>
@@ -1278,6 +1275,16 @@ std::string ShowPlayerPopulation::GetPluginName() {
 /// (ImGui) Code called while rendering your menu window
 /// </summary>
 void ShowPlayerPopulation::Render() {
+        {
+                static bool first_time = true;
+                if (first_time) {
+                        ImGuiContext * igc = ImGui::GetCurrentContext();
+                        if (igc != nullptr) {
+                                igc->Style.Alpha = 1.0f;
+                        }
+                        first_time = !first_time;
+                }
+        }
         if ((in_main_menu && show_in_main_menu) || (in_game_menu && show_in_game_menu)
             || (in_playlist_menu && show_in_playlist_menu)) {
                 // SHOW THE DAMN NUMBERS, JIM!
@@ -1296,118 +1303,136 @@ void ShowPlayerPopulation::Render() {
                                                 std::make_format_args(get_last_bank_entry().zt))
                                                 .c_str());
                         ImGui::NewLine();
-                        ImGui::Indent(20.0f);
-                        if (ImGui::GetWindowWidth() <= (ImGui::GetIO().DisplaySize.x / 2.0f)) {
-                                // less than or equal to half of the width of the screen = "vertical layout"
-                                ImGui::BeginColumns(
-                                        "populationnums_vert",
-                                        2,
-                                        ((lock_overlay_columns) ? ImGuiColumnsFlags_NoResize : 0)
-                                                | ((show_overlay_borders) ? ImGuiColumnsFlags_NoBorder : 0));
-                                ImGui::TextUnformatted("Total Players Online:");
-                                AddUnderline(col_black);
-                                ImGui::NextColumn();
-                                CenterImGuiText(std::to_string(get_last_bank_entry().total_pop));
-                                ImGui::NextColumn();
-                                ImGui::TextUnformatted("Total Population in a Game:");
-                                AddUnderline(col_black);
-                                ImGui::NextColumn();
-                                CenterImGuiText(std::to_string(TOTAL_IN_GAME_POP));
-                                ImGui::NextColumn();
+                        set_StyleColor(ImGuiCol_ChildBg, chosen_overlay_color);
+                        with_StyleVar(ImGuiStyleVar_WindowPadding, {20, 0}) {
+                                with_Child(
+                                        "popnumbers",
+                                        ImVec2 {0, 0},
+                                        false,
+                                        ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_NoBackground) {
+                                        if (ImGui::GetWindowWidth() <= (ImGui::GetIO().DisplaySize.x / 2.0f)) {
+                                                // less than or equal to half of the width of the screen =
+                                                // "vertical layout"
+                                                ImGui::BeginColumns(
+                                                        "populationnums_vert",
+                                                        2,
+                                                        ((lock_overlay_columns) ? ImGuiColumnsFlags_NoResize : 0)
+                                                                | ((show_overlay_borders) ? ImGuiColumnsFlags_NoBorder
+                                                                                          : 0));
+                                                ImGui::TextUnformatted("Total Players Online:");
+                                                AddUnderline(col_black);
+                                                ImGui::NextColumn();
+                                                CenterImGuiText(std::to_string(get_last_bank_entry().total_pop));
+                                                ImGui::NextColumn();
+                                                ImGui::TextUnformatted("Total Population in a Game:");
+                                                AddUnderline(col_black);
+                                                ImGui::NextColumn();
+                                                CenterImGuiText(std::to_string(TOTAL_IN_GAME_POP));
+                                                ImGui::NextColumn();
 
-                                std::vector<std::pair<PlaylistId, int>> playlist_pops;
+                                                std::vector<std::pair<PlaylistId, int>> playlist_pops;
 
-                                for (const auto & str : SHOWN_PLAYLIST_POPS) {
-                                        auto pop = population_data[str];
-                                        for (const auto & popv : pop) {
-                                                playlist_pops.push_back({popv.first, popv.second});
-                                        }
-                                }
+                                                for (const auto & str : SHOWN_PLAYLIST_POPS) {
+                                                        const auto & pop = population_data[str];
+                                                        for (const auto & popv : pop) {
+                                                                playlist_pops.push_back({popv.first, popv.second});
+                                                        }
+                                                }
 
-                                // with_Font(overlay_font_18) {
-                                for (const std::pair<PlaylistId, int> & ppops : playlist_pops) {
-                                        std::string playliststr = bmhelper::playlist_ids_str_spaced[ppops.first];
-                                        int         pop         = ppops.second;
+                                                // with_Font(overlay_font_18) {
+                                                for (const std::pair<PlaylistId, int> & ppops : playlist_pops) {
+                                                        std::string playliststr =
+                                                                bmhelper::playlist_ids_str_spaced[ppops.first];
+                                                        int pop = ppops.second;
 
-                                        ImGui::TextUnformatted(
-                                                std::vformat("{}:", std::make_format_args(playliststr)).c_str());
-                                        ImGui::NextColumn();
-                                        CenterImGuiText(std::vformat("{}", std::make_format_args(pop)));
-                                        ImGui::NextColumn();
-                                }
-                                // }
-                                ImGui::EndColumns();
-                        } else {
-                                // greater than half of the width of the screen = "horizontal layout"
-                                ImGui::BeginColumns(
-                                        "pop_nums_vert",
-                                        6,
-                                        ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
-                                CenterImGuiText("Total Players Online:");
-                                AddUnderline(col_black);
-                                ImGui::NextColumn();
-                                CenterImGuiText(std::to_string(get_last_bank_entry().total_pop));
-                                ImGui::NextColumn();
-                                CenterImGuiText("Total Population in a Game:");
-                                AddUnderline(col_black);
-                                ImGui::NextColumn();
-                                CenterImGuiText(std::to_string(TOTAL_IN_GAME_POP));
-                                ImGui::EndColumns();
-
-                                size_t mxlines = 0;
-                                for (const auto & x : population_data) {
-                                        mxlines = std::max(mxlines, x.second.size());
-                                }
-                                // with_Font(overlay_font_18) {
-                                ImGui::BeginColumns(
-                                        "pop_nums_horiz",
-                                        12,
-                                        ((lock_overlay_columns) ? ImGuiColumnsFlags_NoResize : 0)
-                                                | ((show_overlay_borders) ? ImGuiColumnsFlags_NoBorder : 0));
-                                for (int line = 0; line < mxlines; ++line) {
-                                        for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
-                                                if (line >= population_data[playstr].size()) {
-                                                        // nothing to show :(
-                                                        ImGui::NextColumn();
-                                                        ImGui::NextColumn();
-                                                        continue;
-                                                } else {
-                                                        PlaylistId id  = population_data[playstr][line].first;
-                                                        int        pop = population_data[playstr][line].second;
                                                         ImGui::TextUnformatted(
-                                                                std::vformat(
-                                                                        "{}:",
-                                                                        std::make_format_args(
-                                                                                bmhelper::playlist_ids_str_spaced[id]))
+                                                                std::vformat("{}:", std::make_format_args(playliststr))
                                                                         .c_str());
                                                         ImGui::NextColumn();
-
-                                                        std::string str =
-                                                                std::vformat("{}", std::make_format_args(pop));
-                                                        CenterImGuiText(str);
+                                                        CenterImGuiText(std::vformat("{}", std::make_format_args(pop)));
                                                         ImGui::NextColumn();
                                                 }
-                                        }
-                                }
+                                                // }
+                                                ImGui::EndColumns();
+                                        } else {
+                                                // greater than half of the width of the screen = "horizontal
+                                                // layout"
+                                                ImGui::BeginColumns(
+                                                        "pop_nums_vert",
+                                                        6,
+                                                        ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
+                                                CenterImGuiText("Total Players Online:");
+                                                AddUnderline(col_black);
+                                                ImGui::NextColumn();
+                                                CenterImGuiText(std::to_string(get_last_bank_entry().total_pop));
+                                                ImGui::NextColumn();
+                                                CenterImGuiText("Total Population in a Game:");
+                                                AddUnderline(col_black);
+                                                ImGui::NextColumn();
+                                                CenterImGuiText(std::to_string(TOTAL_IN_GAME_POP));
+                                                ImGui::EndColumns();
 
-                                // every frame :/
-                                static bool exec_once = true;
-                                if (h_cols.colws[0] >= 0.0f && exec_once) {
-                                        exec_once = !exec_once;  // turn off
-                                        for (int i = 0; i < 12; ++i) {
-                                                ImGui::SetColumnWidth(i, h_cols.colws[i]);
-                                                ImGui::SetColumnOffset(i, h_cols.colos[i]);
+                                                size_t mxlines = 0;
+                                                for (const auto & x : population_data) {
+                                                        mxlines = std::max(mxlines, x.second.size());
+                                                }
+                                                // with_Font(overlay_font_18) {
+                                                ImGui::BeginColumns(
+                                                        "pop_nums_horiz",
+                                                        12,
+                                                        ((lock_overlay_columns) ? ImGuiColumnsFlags_NoResize : 0)
+                                                                | ((show_overlay_borders) ? ImGuiColumnsFlags_NoBorder
+                                                                                          : 0));
+                                                for (int line = 0; line < mxlines; ++line) {
+                                                        for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
+                                                                if (line >= population_data[playstr].size()) {
+                                                                        // nothing to show :(
+                                                                        ImGui::NextColumn();
+                                                                        ImGui::NextColumn();
+                                                                        continue;
+                                                                } else {
+                                                                        PlaylistId id =
+                                                                                population_data[playstr][line].first;
+                                                                        int pop = population_data[playstr][line].second;
+                                                                        ImGui::TextUnformatted(
+                                                                                std::vformat(
+                                                                                        "{}:",
+                                                                                        std::make_format_args(
+                                                                                                bmhelper::
+                                                                                                        playlist_ids_str_spaced
+                                                                                                                [id]))
+                                                                                        .c_str());
+                                                                        ImGui::NextColumn();
+
+                                                                        std::string str = std::vformat(
+                                                                                "{}",
+                                                                                std::make_format_args(pop));
+                                                                        CenterImGuiText(str);
+                                                                        ImGui::NextColumn();
+                                                                }
+                                                        }
+                                                }
+
+                                                // every frame :/
+                                                static bool exec_once = true;
+                                                if (h_cols.colws[0] >= 0.0f && exec_once) {
+                                                        exec_once = !exec_once;  // turn off
+                                                        for (int i = 0; i < 12; ++i) {
+                                                                ImGui::SetColumnWidth(i, h_cols.colws[i]);
+                                                                ImGui::SetColumnOffset(i, h_cols.colos[i]);
+                                                        }
+                                                }
+                                                if (!lock_overlay_columns) {
+                                                        for (int i = 0; i < 12; ++i) {
+                                                                h_cols.colws[i] = ImGui::GetColumnWidth(i);
+                                                                h_cols.colos[i] = ImGui::GetColumnOffset(i);
+                                                                ImGui::MarkIniSettingsDirty();
+                                                        }
+                                                }
+                                                // }
+                                                ImGui::EndColumns();
                                         }
                                 }
-                                if (!lock_overlay_columns) {
-                                        for (int i = 0; i < 12; ++i) {
-                                                h_cols.colws[i] = ImGui::GetColumnWidth(i);
-                                                h_cols.colos[i] = ImGui::GetColumnOffset(i);
-                                                ImGui::MarkIniSettingsDirty();
-                                        }
-                                }
-                                // }
-                                ImGui::EndColumns();
                         }
                 }
         }
@@ -1506,7 +1531,8 @@ static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *
         float w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12;
         float o1, o2, o3, o4, o5, o6, o7, o8, o9, o10, o11, o12;
         if (sscanf(line,
-                   "width1=%f,width2=%f,width3=%f,width4=%f,width5=%f,width6=%f,width7=%f,width8=%f,width9=%f,width10=%"
+                   "width1=%f,width2=%f,width3=%f,width4=%f,width5=%f,width6=%f,width7=%f,width8=%f,width9=%f,"
+                   "width10=%"
                    "f,width11=%f,width12=%f",
                    &w1,
                    &w2,
@@ -1535,7 +1561,8 @@ static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *
                 ShowPlayerPopulation::h_cols.colws[11] = w12;
         }
         if (sscanf(line,
-                   "offset1=%f,offset2=%f,offset3=%f,offset4=%f,offset5=%f,offset6=%f,offset7=%f,offset8=%f,offset9=%f,"
+                   "offset1=%f,offset2=%f,offset3=%f,offset4=%f,offset5=%f,offset6=%f,offset7=%f,offset8=%f,"
+                   "offset9=%f,"
                    "offset10=%f,offset11=%f,offset12=%f",
                    &o1,
                    &o2,
