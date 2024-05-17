@@ -84,7 +84,7 @@
   <ItemGroup>
     <ClInclude Include="..\imgui_sugar\imgui_sugar.hpp" />
     <ClInclude Include="..\implot\implot.h" />
-    <ClInclude Include="imguihelper.h" />
+    <ClInclude Include="imgui_helper.h" />
     <ClInclude Include="ShowPlayerPopulation.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.h" />
@@ -110,7 +110,7 @@
     <ClInclude Include="..\csv-parser\include\internal\csv_utility.hpp" />
     <ClInclude Include="..\csv-parser\include\internal\csv_writer.hpp" />
     <ClInclude Include="..\csv-parser\include\internal\data_type.h" />
-    <ClInclude Include="bmhelper.h" />
+    <ClInclude Include="bm_helper.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="HookedEvents.h" />
   </ItemGroup>

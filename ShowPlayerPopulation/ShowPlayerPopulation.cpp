@@ -6,6 +6,7 @@
 #include <format>
 #include <fstream>
 #include <ranges>
+#include <thread>
 
 #include "csv.hpp"
 #include "implot.h"
@@ -16,19 +17,20 @@
 
 /*
  * TODO: [Difficulty/10]
+ *  - maybe make a release version dll with a powershell script based on ${BakkesModPath} registry value. (lol) [2//10]
  *  - Do other imgui stuff saved to imgui ini [3/10]
  *  - add hide titlebar [1/10]
  *  - Generate the RL SDK to see about window positions / playlist information. [7/10]
  *  - New projects: auto forfeit and hide blueprints. [6/10]
  *  - rewrite instant suite [6/10]
  *  - FIX autosavereplay [2/10]
- *  - nameplate colors. [10/10]
+ *  - ~~nameplate colors. [10/10]~~ IM SO HAPPY! THIS IS LIKE A 2//10!!!!!
  *
  */
 
 const std::string          ShowPlayerPopulation::CMD_PREFIX                 = "spp_";
 const std::chrono::seconds ShowPlayerPopulation::GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
-imguihelper::OverlayHorizontalColumnsSettings ShowPlayerPopulation::h_cols  = {-1};
+imgui_helper::OverlayHorizontalColumnsSettings ShowPlayerPopulation::h_cols = {-1};
 
 BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "1.0.8", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
@@ -74,7 +76,7 @@ void ShowPlayerPopulation::init_datafile() {
                 std::vector<std::string>      header {"DATETIME", "TOTALPOPULATION", "TOTALPLAYERSONLINE"};
 
                 // EASILY COPY THE HEADERS OVER
-                auto vv = std::views::values(bmhelper::playlist_ids_str);
+                auto vv = std::views::values(bm_helper::playlist_ids_str);
                 std::copy(begin(vv), end(vv), std::back_inserter(header));
                 recordwriter << header;
         } else {
@@ -87,8 +89,8 @@ void ShowPlayerPopulation::init_datafile() {
                 while (recordreader.read_row(row)) {
                         std::map<PlaylistId, int> playlist_pop;
                         for (const auto & str : header) {
-                                if (bmhelper::playlist_str_ids.contains(str)) {
-                                        playlist_pop[bmhelper::playlist_str_ids[str]] = row[str].get<int>();
+                                if (bm_helper::playlist_str_ids.contains(str)) {
+                                        playlist_pop[bm_helper::playlist_str_ids[str]] = row[str].get<int>();
                                 }
                         }
                         bank.push_back(
@@ -314,7 +316,7 @@ void ShowPlayerPopulation::record_population() {
                 token entry;
                 entry.total_pop            = mw.GetTotalPopulation();
                 entry.total_players_online = mw.GetTotalPlayersOnline();
-                for (const auto & element : bmhelper::playlist_ids_str) {
+                for (const auto & element : bm_helper::playlist_ids_str) {
                         entry.playlist_pop[element.first] = mw.GetPlayerCount(static_cast<PlaylistIds>(element.first));
                 }
                 entry.zt = zoned_seconds {current_zone(), time_point_cast<seconds>(system_clock::now())};
@@ -353,11 +355,25 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
         has_graph_data = true;
 }
 
+static void massage_helper() {
+}
+
 /// <summary>
 /// Updates the entries in the graph data to have a consistent time offset from "now".
 /// </summary>
 void ShowPlayerPopulation::massage_graph_data() {
-        if (!data_header_is_open) {
+        // THIS IS STILL SLOW
+        // SOMEHOW
+        // LIKELY BECAUSE OF CHRONO LIBRARY USAGE?
+        // COULD JUST
+        // SPIN UP A THREAD?
+        std::shared_ptr<thrair>                       gtpdt;  // temp pointers
+        std::shared_ptr<std::map<PlaylistId, thrair>> gdt;
+        static std::thread                            t;
+        (&ShowPlayerPopulation::massage_graph_data, this, gtpdt, gdt);
+        t.detach();
+        LOG("MASSAGE START: {}", get_current_datetime_str());
+        if (!data_header_is_open || !t.joinable()) {
                 return;
         }
 
@@ -372,25 +388,31 @@ void ShowPlayerPopulation::massage_graph_data() {
                 return;
         }
 
+        using ppop                    = std::map<PlaylistId, thrair>;
+        std::shared_ptr<thrair> gtpdt = std::make_shared<thrair>(graph_total_pop_data);
+        std::shared_ptr<ppop>   gdt   = std::make_shared<ppop>(graph_data);
+
+        std::chrono::local_seconds tnow = now.get_local_time();
+
         // update every time difference in the list...
         for (size_t i : std::ranges::views::iota(0, static_cast<int>(graph_total_pop_data.t.size()))) {
                 graph_total_pop_data.xs[i] =
-                        duration<float, minutes::period> {
-                                (graph_total_pop_data.t[i].get_local_time() - now.get_local_time())}
-                                .count();
+                        duration<float, minutes::period> {(graph_total_pop_data.t[i].get_local_time() - tnow)}.count();
         }
 
         for (const auto & entry : t.playlist_pop) {
                 PlaylistId playid = entry.first;
                 for (size_t i : std::ranges::views::iota(0, static_cast<int>(graph_data[playid].t.size()))) {
                         graph_data[playid].xs[i] =
-                                duration<float, minutes::period> {
-                                        graph_data[playid].t[i].get_local_time() - now.get_local_time()}
+                                duration<float, minutes::period> {graph_data[playid].t[i].get_local_time() - tnow}
                                         .count();
                 }
         }
 
         last_massage_update = now;
+        LOG("MASSAGE END: {}", get_current_datetime_str());
+        gtpd = gtpdt;
+        gd   = gdt;
 }
 
 /// <summary>
@@ -408,17 +430,17 @@ void ShowPlayerPopulation::prepare_data() {
         // get max number of lines to display in a category on the overlay
         size_t mxlines = 0;
         for (const auto & neat : SHOWN_PLAYLIST_POPS) {
-                mxlines = std::max(bmhelper::playlist_categories[neat].size(), mxlines);
+                mxlines = std::max(bm_helper::playlist_categories[neat].size(), mxlines);
         }
 
         // put those lines into a data structure
         // (this is solely done to avoid empty lines in the overlay display.)
         for (int line = 0; line < mxlines; ++line) {
                 for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
-                        if (line >= bmhelper::playlist_categories[playstr].size()) {
+                        if (line >= bm_helper::playlist_categories[playstr].size()) {
                                 continue;
                         } else {
-                                PlaylistId id  = bmhelper::playlist_categories[playstr][line];
+                                PlaylistId id  = bm_helper::playlist_categories[playstr][line];
                                 int        pop = 0;
                                 if (playlist_population.contains(id)) {
                                         pop = playlist_population.at(id);
@@ -475,8 +497,8 @@ void ShowPlayerPopulation::write_data_to_file() {
                 data_written.push_back(std::to_string(item.total_pop));
                 data_written.push_back(std::to_string(item.total_players_online));
                 for (const auto & col : header) {
-                        if (bmhelper::playlist_str_ids.contains(col)) {
-                                PlaylistId playid = bmhelper::playlist_str_ids[col];
+                        if (bm_helper::playlist_str_ids.contains(col)) {
+                                PlaylistId playid = bm_helper::playlist_str_ids[col];
                                 data_written.push_back(std::to_string(item.playlist_pop.at(playid)));
                         }
                 }
@@ -501,9 +523,11 @@ void ShowPlayerPopulation::CHECK_NOW() {
 
         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
         if (mw) {
-                // EXTRAS because (I believe) it gets around the "Please select a playlist" notification popping
-                // up... maybe since there's no "EXTRAS" playlist category anymore? ... When I had this at
-                // casual, I was seeing an annoying error popup sometimes.
+                // It's my theory that the playlist selection and the category selected here result in something being
+                // "selected", yet nothing gets selected because it's not technically valid, but this prevents the
+                // "Error: Select a playlist" error from popping up -_-
+                mw.SetPlaylistSelection(Playlist::AUTO_TOURNAMENT, true);  // Technically this isn't a playlist?
+                // there isn't an extras playlist anymore...
                 mw.StartMatchmaking(PlaylistCategory::EXTRAS);
                 mw.CancelMatchmaking();
         }
@@ -751,7 +775,7 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::EndTooltip();
         }
 
-        cond_Disabled(bkeep) {  // if bkeep = true, the following is rendered inactive
+        maybe_Disabled(bkeep) {  // if bkeep = true, the following is rendered inactive
                 ImGui::SameLine(300.0f, 200.0f);
                 static bool popup = false;
                 if (ImGui::Button("PRUNE DATA FILE?")) {
@@ -859,7 +883,7 @@ void ShowPlayerPopulation::RenderSettings() {
                                         continue;
                                 }
                                 ImPlot::PlotLine(
-                                        bmhelper::playlist_ids_str_spaced[entry.first].c_str(),
+                                        bm_helper::playlist_ids_str_spaced[entry.first].c_str(),
                                         graph_data[entry.first].xs.data(),
                                         graph_data[entry.first].ys.data(),
                                         std::size(graph_data[entry.first].xs));
@@ -896,7 +920,7 @@ void ShowPlayerPopulation::RenderSettings() {
                         ImPlot::EndPlot();
                 }
                 // Maybe a list with selectable elements
-                set_StyleColor(ImGuiCol_Header, ImVec4(0.5f, 0.1f, 0.0f, 0.7f));
+                set_StyleColor(ImGuiCol_Header, ImVec4(0.19f, 0.85f, 0.12f, 0.7f));
                 ImGui::BeginColumns(
                         "graphselectables_total_pop",
                         6,
@@ -923,18 +947,17 @@ void ShowPlayerPopulation::RenderSettings() {
                         ImGui::TextUnformatted(header.c_str());
                         AddUnderline(col_white);
                         ImGui::NextColumn();
-                        mxlines = std::max(mxlines, bmhelper::playlist_categories[header].size());
+                        mxlines = std::max(mxlines, bm_helper::playlist_categories[header].size());
                 }
                 for (int line = 0; line < mxlines; ++line) {
                         for (const std::string & category : SHOWN_PLAYLIST_POPS) {
-                                if (line < bmhelper::playlist_categories[category].size()) {
-                                        bool enabled = graph_flags[bmhelper::playlist_categories[category][line]];
-                                        cond_Disabled(!enabled) {
-                                                PlaylistId playid = bmhelper::playlist_categories[category][line];
-                                                ImGui::Selectable(
-                                                        bmhelper::playlist_ids_str_spaced[playid].c_str(),
-                                                        &graph_flags_selected[playid]);
-                                        }
+                                if (line < bm_helper::playlist_categories[category].size()) {
+                                        bool enabled = graph_flags[bm_helper::playlist_categories[category][line]];
+                                        group_Disabled(!enabled);
+                                        PlaylistId playid = bm_helper::playlist_categories[category][line];
+                                        ImGui::Selectable(
+                                                bm_helper::playlist_ids_str_spaced[playid].c_str(),
+                                                &graph_flags_selected[playid]);
                                 }
                                 ImGui::NextColumn();
                         }
@@ -1342,7 +1365,7 @@ void ShowPlayerPopulation::Render() {
                                                 // with_Font(overlay_font_18) {
                                                 for (const std::pair<PlaylistId, int> & ppops : playlist_pops) {
                                                         std::string playliststr =
-                                                                bmhelper::playlist_ids_str_spaced[ppops.first];
+                                                                bm_helper::playlist_ids_str_spaced[ppops.first];
                                                         int pop = ppops.second;
 
                                                         ImGui::TextUnformatted(
@@ -1398,7 +1421,7 @@ void ShowPlayerPopulation::Render() {
                                                                                 std::vformat(
                                                                                         "{}:",
                                                                                         std::make_format_args(
-                                                                                                bmhelper::
+                                                                                                bm_helper::
                                                                                                         playlist_ids_str_spaced
                                                                                                                 [id]))
                                                                                         .c_str());
@@ -1527,7 +1550,7 @@ static void * ImGuiSettingsReadOpen(ImGuiContext * ctx, ImGuiSettingsHandler * h
         return reinterpret_cast<void *>(&ShowPlayerPopulation::h_cols);
 }
 static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void * entry, const char * line) {
-        ShowPlayerPopulation::h_cols = *(imguihelper::OverlayHorizontalColumnsSettings *)entry;
+        ShowPlayerPopulation::h_cols = *(imgui_helper::OverlayHorizontalColumnsSettings *)entry;
         float w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12;
         float o1, o2, o3, o4, o5, o6, o7, o8, o9, o10, o11, o12;
         if (sscanf(line,

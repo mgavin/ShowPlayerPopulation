@@ -179,7 +179,7 @@
     <ClInclude Include="..\csv-parser\include\csv.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="bmhelper.h">
+    <ClInclude Include="bm_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\implot\implot.h">
@@ -188,7 +188,7 @@
     <ClInclude Include="..\imgui_sugar\imgui_sugar.hpp">
       <Filter>IMGUI_SUGAR</Filter>
     </ClInclude>
-    <ClInclude Include="imguihelper.h">
+    <ClInclude Include="imgui_helper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

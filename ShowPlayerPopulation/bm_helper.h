@@ -65,7 +65,7 @@ enum class PlaylistId {
 };
 
 // fuck clang-lint/tidy "ODR" bullshit.
-namespace bmhelper {
+namespace bm_helper {
         std::map<PlaylistId, std::string> playlist_ids_str = {
   // NO MATCHING PLAYLIST
                 {                PlaylistId::Unknown,                 "Unknown"},
@@ -302,4 +302,4 @@ PlaylistId::CubicSpooky,    PlaylistId::GForceFrenzy}                           
                 {   OnlinePlatform_Epic,    "OnlinePlatform_Epic"},
                 {    OnlinePlatform_MAX,     "OnlinePlatform_MAX"}
         };
-}  // namespace bmhelper
+}  // namespace bm_helper

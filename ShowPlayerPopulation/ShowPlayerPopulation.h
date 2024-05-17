@@ -5,9 +5,9 @@
 #include "bakkesmod/plugin/pluginsettingswindow.h"
 #include "bakkesmod/plugin/pluginwindow.h"
 
-#include "bmhelper.h"
+#include "bm_helper.h"
 #include "imgui.h"
-#include "imguihelper.h"
+#include "imgui_helper.h"
 
 #include "bakkesmod/imgui/imgui_internal.h"
 #include "imgui_sugar.hpp"
@@ -74,6 +74,10 @@ private:
                 std::vector<float>                      xs;
                 std::vector<float>                      ys;
         };
+        struct graph_data_grp {
+                thrair                       a;
+                std::map<PlaylistId, thrair> b;
+        };
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
@@ -86,7 +90,7 @@ private:
         std::map<PlaylistId, thrair> graph_data;            // [PlaylistId] -> {times, xs, ys}
         std::map<PlaylistId, bool>   graph_flags = []() {
                 std::map<PlaylistId, bool> tmp;
-                for (const auto & item : bmhelper::playlist_ids_str) {
+                for (const auto & item : bm_helper::playlist_ids_str) {
                         tmp[item.first] = false;
                 };
                 return tmp;
@@ -202,34 +206,5 @@ public:
 
         // THE ONLY THING I CANT SAVE FROM BEING PUBLIC? OH NOOOOO~
         // I COULD FAKE IT BY HIDING IT SOMEWHERE ELSE, BUT THAT WOULD BE KINDA LAME
-        static imguihelper::OverlayHorizontalColumnsSettings h_cols;
+        static imgui_helper::OverlayHorizontalColumnsSettings h_cols;
 };
-
-// imgui_sugar.hpp additional code:
-
-namespace ImGuiSugar {
-        /// <summary>
-        /// ImGui helper function that pushes some values that make an item appear "inactive"
-        /// </summary>
-        inline void PushItemDisabled() {
-                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-        }
-
-        /// <summary>
-        /// ImGui helper function that pops some values that make an item appear "inactive"
-        /// </summary>
-        inline void PopItemDisabled() {
-                ImGui::PopItemFlag();
-                ImGui::PopStyleVar();
-        }
-}  // namespace ImGuiSugar
-
-#define IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)                                                  \
-        if (const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> _ui_scope_guard =                             \
-                    ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(IMGUI_SUGAR_ES_0(BEGIN), &END)) \
-                            : (nullptr));                                                                       \
-            true)
-
-#define cond_Disabled(flag) \
-        IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(ImGuiSugar::PushItemDisabled, ImGuiSugar::PopItemDisabled, flag)
