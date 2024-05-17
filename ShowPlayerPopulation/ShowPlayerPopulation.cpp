@@ -28,10 +28,6 @@
  *
  */
 
-const std::string          ShowPlayerPopulation::CMD_PREFIX                 = "spp_";
-const std::chrono::seconds ShowPlayerPopulation::GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
-imgui_helper::OverlayHorizontalColumnsSettings ShowPlayerPopulation::h_cols = {-1};
-
 BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "1.0.8", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
@@ -367,9 +363,9 @@ void ShowPlayerPopulation::massage_graph_data() {
         // LIKELY BECAUSE OF CHRONO LIBRARY USAGE?
         // COULD JUST
         // SPIN UP A THREAD?
-        std::shared_ptr<thrair>                       gtpdt;  // temp pointers
-        std::shared_ptr<std::map<PlaylistId, thrair>> gdt;
-        static std::thread                            t;
+        std::shared_ptr<graphed_data_t>                       gtpdt;  // temp pointers
+        std::shared_ptr<std::map<PlaylistId, graphed_data_t>> gdt;
+        static std::thread                                    t;
         (&ShowPlayerPopulation::massage_graph_data, this, gtpdt, gdt);
         t.detach();
         LOG("MASSAGE START: {}", get_current_datetime_str());
@@ -388,9 +384,9 @@ void ShowPlayerPopulation::massage_graph_data() {
                 return;
         }
 
-        using ppop                    = std::map<PlaylistId, thrair>;
-        std::shared_ptr<thrair> gtpdt = std::make_shared<thrair>(graph_total_pop_data);
-        std::shared_ptr<ppop>   gdt   = std::make_shared<ppop>(graph_data);
+        using ppop                            = std::map<PlaylistId, graphed_data_t>;
+        std::shared_ptr<graphed_data_t> gtpdt = std::make_shared<graphed_data_t>(graph_total_pop_data);
+        std::shared_ptr<ppop>           gdt   = std::make_shared<ppop>(graph_data);
 
         std::chrono::local_seconds tnow = now.get_local_time();
 
@@ -1703,7 +1699,7 @@ bool ShowPlayerPopulation::ShouldBlockInput() {
 /// <summary>
 ///  do the following when your plugin is unloaded
 /// </summary>
-void ShowPlayerPopulation::onUnload() {
+void ShowPlayerPopulation::onUnload() noexcept {
         // destroy things
         // dont throw here
 

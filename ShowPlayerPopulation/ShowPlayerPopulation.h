@@ -19,7 +19,7 @@ class ShowPlayerPopulation :
 private:
         // variables pertaining to the plugin's functionality
 
-        static const int DONT_SHOW_POP_BELOW_THRESHOLD = 10;
+        inline static const int DONT_SHOW_POP_BELOW_THRESHOLD = 10;
         // Why less than 10?
         // Developers tend to jump into modes at their whim
         // The population numbers are still tracked no matter who is in the
@@ -32,9 +32,9 @@ private:
         // and 10 ... because... to give an opportunity to
         // catch enough people in the custom training editor
 
-        static const std::string          CMD_PREFIX;
-        static const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT;
-        const std::filesystem::path       RECORD_POPULATION_FILE =
+        inline static const std::string          CMD_PREFIX                 = "spp_";
+        inline static const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
+        const std::filesystem::path              RECORD_POPULATION_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
@@ -69,26 +69,36 @@ private:
         };
 
         // miscellaneous helper data. graphing should go here.
-        struct thrair {  // three pair
+        struct graphed_data_t {  // three pair
+                graphed_data_t & operator=(const graphed_data_t &) & = default;
+                graphed_data_t & operator=(graphed_data_t &&) &      = default;
+                graphed_data_t(const graphed_data_t &)               = default;
+                graphed_data_t(graphed_data_t &&)                    = default;
+
                 std::vector<std::chrono::zoned_seconds> t;
                 std::vector<float>                      xs;
                 std::vector<float>                      ys;
         };
         struct graph_data_grp {
-                thrair                       a;
-                std::map<PlaylistId, thrair> b;
+                graph_data_grp & operator=(const graph_data_grp &) & = default;
+                graph_data_grp & operator=(graph_data_grp &&) &      = default;
+                graph_data_grp(const graph_data_grp &)               = default;
+                graph_data_grp(graph_data_grp &&)                    = default;
+
+                graphed_data_t                       a;
+                std::map<PlaylistId, graphed_data_t> b;
         };
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
         int                                                            TOTAL_IN_GAME_POP = 0;
-        std::chrono::zoned_seconds   last_massage_update {std::chrono::current_zone()};
-        bool                         has_graph_data      = false;
-        bool                         data_header_is_open = false;
-        bool                         graph_total_pop     = true;
-        thrair                       graph_total_pop_data;  // {times, xs, ys}
-        std::map<PlaylistId, thrair> graph_data;            // [PlaylistId] -> {times, xs, ys}
-        std::map<PlaylistId, bool>   graph_flags = []() {
+        std::chrono::zoned_seconds           last_massage_update {std::chrono::current_zone()};
+        bool                                 has_graph_data      = false;
+        bool                                 data_header_is_open = false;
+        bool                                 graph_total_pop     = true;
+        graphed_data_t                       graph_total_pop_data;  // {times, xs, ys}
+        std::map<PlaylistId, graphed_data_t> graph_data;            // [PlaylistId] -> {times, xs, ys}
+        std::map<PlaylistId, bool>           graph_flags = []() {
                 std::map<PlaylistId, bool> tmp;
                 for (const auto & item : bm_helper::playlist_ids_str) {
                         tmp[item.first] = false;
@@ -99,6 +109,11 @@ private:
 
         // members pertaining to data functionality
         struct token {
+                token & operator=(const token &) & = default;
+                token & operator=(token &&) &      = default;
+                token(const token &)               = default;
+                token(token &&)                    = default;
+
                 std::chrono::zoned_seconds zt;
                 int                        total_pop;
                 int                        total_players_online;  // I've never seen it be unequal to total_pop
@@ -109,7 +124,7 @@ private:
         // it holds all the data during the operation of the plugin
         // ... instead of reading in and out of a file...
         // would be neat to separate out an interface
-        // and that would take desining another class to basically
+        // and that would take designing another class to basically
         // -> record, -> write -> read -> save... one class implementation would read / write to the file for every
         // operation; another implementation would just use the queue...
         // but I'm not doing that right now
@@ -166,8 +181,8 @@ private:
         void SET_WHICH_MENU_I_AM_IN();
 
         // deque -help
-        ShowPlayerPopulation::token get_first_bank_entry();
-        ShowPlayerPopulation::token get_last_bank_entry();
+        ShowPlayerPopulation::token get_first_bank_entry() &&;
+        ShowPlayerPopulation::token get_last_bank_entry() &&;
 
         // clear -help
         void clear_graph_total_pop_data();
@@ -183,11 +198,11 @@ private:
                 std::string                                   cmd_name,
                 std::function<void(std::vector<std::string>)> do_func,
                 std::string                                   desc,
-                unsigned char                                 PERMISSIONS) const;
+                unsigned char                                 PERMISSIONS) const &;
 
 public:
         void onLoad() override;
-        void onUnload() override;
+        void onUnload() noexcept override;
 
         void        RenderSettings() override;
         std::string GetPluginName() override;
@@ -206,5 +221,5 @@ public:
 
         // THE ONLY THING I CANT SAVE FROM BEING PUBLIC? OH NOOOOO~
         // I COULD FAKE IT BY HIDING IT SOMEWHERE ELSE, BUT THAT WOULD BE KINDA LAME
-        static imgui_helper::OverlayHorizontalColumnsSettings h_cols;
+        inline static imgui_helper::OverlayHorizontalColumnsSettings h_cols = {-1};
 };
