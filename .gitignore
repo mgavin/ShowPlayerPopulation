@@ -370,3 +370,5 @@ FodyWeavers.xsd
 /video/script
 /bakkesmodsubmission.png
 *.zip
+
+clang-format-hooks/
