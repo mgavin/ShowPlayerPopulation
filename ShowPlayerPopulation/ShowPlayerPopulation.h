@@ -31,15 +31,12 @@ private:
         // and 10 ... because... to give an opportunity to
         // catch enough people in the custom training editor
 
-        inline static const std::string          CMD_PREFIX = "spp_";
-        inline static const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT =
-                std::chrono::seconds {15};
-        const std::filesystem::path RECORD_POPULATION_FILE =
-                gameWrapper->GetDataFolder().append(
-                        "ShowPlayerPopulation\\RecordPopulationData.csv");
+        inline static const std::string          CMD_PREFIX                 = "spp_";
+        inline static const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
+        const std::filesystem::path              RECORD_POPULATION_FILE =
+                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
-                gameWrapper->GetDataFolder().append(
-                        "ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
+                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
         const std::string DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
         const std::string DATETIME_PARSE_STR  = "%FT%T%z";
 
@@ -97,12 +94,12 @@ private:
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
         int                                                            TOTAL_IN_GAME_POP = 0;
         std::chrono::zoned_seconds      last_massage_update {std::chrono::current_zone()};
-        bool                            has_graph_data      = false;
-        bool                            data_header_is_open = false;
-        bool                            graph_total_pop     = true;
-        std::shared_ptr<graphed_data_t> graph_total_pop_data;  // {times, xs, ys}
-        std::shared_ptr<std::map<PlaylistId, graphed_data_t>>
-                                   graph_data;  // [PlaylistId] -> {times, xs, ys}
+        bool                            has_graph_data       = false;
+        bool                            data_header_is_open  = false;
+        bool                            graph_total_pop      = true;
+        std::shared_ptr<graphed_data_t> graph_total_pop_data = std::make_shared<graphed_data_t>();  // {times, xs, ys}
+        std::shared_ptr<std::map<PlaylistId, graphed_data_t>> graph_data =
+                std::make_shared<std::map<PlaylistId, graphed_data_t>>();  // [PlaylistId] -> {times, xs, ys}
         std::map<PlaylistId, bool> graph_flags = []() {
                 std::map<PlaylistId, bool> tmp;
                 for (const auto & item : bm_helper::playlist_ids_str) {
@@ -119,10 +116,7 @@ private:
                 token & operator=(token &&) &      = default;
                 token(const token &)               = default;
                 token(token &&)                    = default;
-                token(std::chrono::zoned_seconds z,
-                      int                        tp,
-                      int                        tpo,
-                      std::map<PlaylistId, int>  pp) :
+                token(std::chrono::zoned_seconds z, int tp, int tpo, std::map<PlaylistId, int> pp) :
                         zt(std::move(z)),
                         total_pop(std::move(tp)),
                         total_players_online(std::move(tpo)),
@@ -130,8 +124,8 @@ private:
 
                 std::chrono::zoned_seconds zt;
                 int                        total_pop;
-                int total_players_online;  // I've never seen it be unequal to total_pop
-                std::map<PlaylistId, int> playlist_pop;
+                int                        total_players_online;  // I've never seen it be unequal to total_pop
+                std::map<PlaylistId, int>  playlist_pop;
         };
 
         // a bank full of tokens
@@ -162,10 +156,9 @@ private:
         bool show_all;
 
         ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
-        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos,
-                slot6_init_pos;
-        void SNAPSHOT_PLAYLIST_POSITIONS();
-        void GET_DEFAULT_POP_NUMBER_PLACEMENTS();
+        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos, slot6_init_pos;
+        void   SNAPSHOT_PLAYLIST_POSITIONS();
+        void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 
         // these may end up going away
         bool showstats;
@@ -185,8 +178,8 @@ private:
         void massage_graph_data_operations(
                 bool &,
                 bool &,
-                std::shared_ptr<graphed_data_t>,
-                std::shared_ptr<std::map<PlaylistId, graphed_data_t>>);
+                std::shared_ptr<graphed_data_t> &,
+                std::shared_ptr<std::map<PlaylistId, graphed_data_t>> &);
         void massage_graph_data();
         void prepare_data();
         void prune_data();
