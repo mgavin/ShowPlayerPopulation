@@ -29,7 +29,6 @@
  *  - ~~nameplate colors. [10/10]~~ IM SO HAPPY! THIS IS LIKE A 2//10!!!!!
  *
  *
- *  - thread massage_graph_data
  *  - clang format hook for windows / linux
  */
 
@@ -368,52 +367,41 @@ void ShowPlayerPopulation::massage_graph_data_operations(
         std::shared_ptr<std::map<PlaylistId, graphed_data_t>> & gd) {
         using namespace std::chrono;
         using namespace std::chrono_literals;
-        LOG("JFC1");
 
-        auto beg = zoned_time<milliseconds> {current_zone(), time_point_cast<milliseconds>(system_clock::now())};
-        LOG("MASSAGE START: {}", std::vformat("{0:%F}T{0:%T%z}", std::make_format_args(beg)));
         thread_busy = true;
 
         zoned_seconds              now {current_zone(), time_point_cast<seconds>(system_clock::now())};
         std::chrono::local_seconds tnow = now.get_local_time();
-        LOG("JFC2");
-        LOG("front... {}  ys? {}", graph_total_pop_data->xs.front(), std::ranges::max(graph_total_pop_data->ys));
+
         // release and destroy previously owned data
         gtpd.reset();
         gd.reset();
-        LOG("JFC3");
+
         // copy new data to the temp holders
         gtpd = std::make_shared<graphed_data_t>(*graph_total_pop_data);
         gd   = std::make_shared<std::map<PlaylistId, graphed_data_t>>(*graph_data);
-        LOG("graph_totlatat: {:X}; graphdata: {:X}",
-            reinterpret_cast<uintptr_t>(&(*graph_total_pop_data)),
-            reinterpret_cast<uintptr_t>(&(*graph_data)));
-        LOG("gtpd.get(): {:X}; gd.get: {:X}",
-            reinterpret_cast<uintptr_t>(&(*gtpd)),
-            reinterpret_cast<uintptr_t>(&(*gd)));
-        int WOW = 1;
-        LOG("{:X}", WOW);
-        LOG("JFC4");
-        LOG("front... {}  ys? {}", gtpd->xs.front(), std::ranges::max(gtpd->ys));
+
         const token & t = get_last_bank_entry();
-        LOG("SIZE 1 : {} ; size2 : {}", gtpd->t.size(), gd->begin()->second.t.size());
+
         // update every time difference in the list...
         for (size_t i : std::ranges::views::iota(0, static_cast<int>(gtpd->t.size()))) {
                 gtpd->xs[i] = duration<float, minutes::period> {(gtpd->t[i].get_local_time() - tnow)}.count();
         }
-        LOG("JFC5");
+
         for (const auto & entry : t.playlist_pop) {
                 PlaylistId playid = entry.first;
+                int        pop    = entry.second;
+                if (pop < DONT_SHOW_POP_BELOW_THRESHOLD) {
+                        continue;
+                }
                 for (size_t i : std::ranges::views::iota(0, static_cast<int>((*gd)[playid].t.size()))) {
                         (*gd)[playid].xs[i] =
                                 duration<float, minutes::period> {(*gd)[playid].t[i].get_local_time() - tnow}.count();
                 }
         }
-        LOG("JFC6");
+
         data_ready  = true;
         thread_busy = false;
-        auto end    = zoned_time<milliseconds> {current_zone(), time_point_cast<milliseconds>(system_clock::now())};
-        LOG("MASSAGE END: {}", std::vformat(DATETIME_FORMAT_STR, std::make_format_args(end)));
 }
 
 /// <summary>
@@ -442,7 +430,7 @@ void ShowPlayerPopulation::massage_graph_data() {
 
         if (!data_ready) {
                 // do work elsewhere-- only one should be executing at a time.
-                LOG("YOU SHOULD; COUNT1 & 2 : {} . {}", gtpdt.use_count(), gdt.use_count());
+                // if gtpdt or gdt .use_count() is ever greater than 1, that's bad.
                 std::thread {
                         &ShowPlayerPopulation::massage_graph_data_operations,
                         this,
@@ -451,17 +439,11 @@ void ShowPlayerPopulation::massage_graph_data() {
                         std::ref(gtpdt),
                         std::ref(gdt)}
                         .detach();
-                LOG("HALT, RIGHT????; COUNT 1 1 & 2 : {} . {}", gtpdt.use_count(), gdt.use_count());
         } else {
                 // swap in the temporaries
-                LOG("SIZE 1 : {} ; size2 : {}", gtpdt->t.size(), gdt->begin()->second.t.size());
-                LOG("front... {}  ys? {}", gtpdt->xs.front(), std::ranges::max(gtpdt->ys));
-                LOG("SWAP1");
                 graph_total_pop_data.swap(gtpdt);
-                LOG("SWAP2");
                 graph_data.swap(gdt);
-                LOG("SIZE 1 : {} ; size2 : {}", gtpdt->t.size(), gdt->begin()->second.t.size());
-                LOG("front... {}  ys? {}", gtpdt->xs.front(), std::ranges::max(gtpdt->ys));
+
                 data_ready          = false;
                 last_massage_update = now;
         }
