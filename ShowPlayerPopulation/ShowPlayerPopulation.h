@@ -5,12 +5,11 @@
 #include "bakkesmod/plugin/pluginsettingswindow.h"
 #include "bakkesmod/plugin/pluginwindow.h"
 
-#include "bm_helper.h"
 #include "imgui.h"
-#include "imgui_helper.h"
+#include "imgui_internal.h"
 
-#include "bakkesmod/imgui/imgui_internal.h"
-#include "imgui_sugar.hpp"
+#include "bm_helper.h"
+#include "imgui_helper.h"
 
 class ShowPlayerPopulation :
         public BakkesMod::Plugin::BakkesModPlugin,
@@ -32,12 +31,15 @@ private:
         // and 10 ... because... to give an opportunity to
         // catch enough people in the custom training editor
 
-        inline static const std::string          CMD_PREFIX                 = "spp_";
-        inline static const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
-        const std::filesystem::path              RECORD_POPULATION_FILE =
-                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
+        inline static const std::string          CMD_PREFIX = "spp_";
+        inline static const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT =
+                std::chrono::seconds {15};
+        const std::filesystem::path RECORD_POPULATION_FILE =
+                gameWrapper->GetDataFolder().append(
+                        "ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
-                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
+                gameWrapper->GetDataFolder().append(
+                        "ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
         const std::string DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
         const std::string DATETIME_PARSE_STR  = "%FT%T%z";
 
@@ -70,6 +72,7 @@ private:
 
         // miscellaneous helper data. graphing should go here.
         struct graphed_data_t {  // three pair
+                graphed_data_t()                                     = default;
                 graphed_data_t & operator=(const graphed_data_t &) & = default;
                 graphed_data_t & operator=(graphed_data_t &&) &      = default;
                 graphed_data_t(const graphed_data_t &)               = default;
@@ -80,6 +83,7 @@ private:
                 std::vector<float>                      ys;
         };
         struct graph_data_grp {
+                graph_data_grp()                                     = default;
                 graph_data_grp & operator=(const graph_data_grp &) & = default;
                 graph_data_grp & operator=(graph_data_grp &&) &      = default;
                 graph_data_grp(const graph_data_grp &)               = default;
@@ -92,13 +96,14 @@ private:
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
         int                                                            TOTAL_IN_GAME_POP = 0;
-        std::chrono::zoned_seconds           last_massage_update {std::chrono::current_zone()};
-        bool                                 has_graph_data      = false;
-        bool                                 data_header_is_open = false;
-        bool                                 graph_total_pop     = true;
-        graphed_data_t                       graph_total_pop_data;  // {times, xs, ys}
-        std::map<PlaylistId, graphed_data_t> graph_data;            // [PlaylistId] -> {times, xs, ys}
-        std::map<PlaylistId, bool>           graph_flags = []() {
+        std::chrono::zoned_seconds      last_massage_update {std::chrono::current_zone()};
+        bool                            has_graph_data      = false;
+        bool                            data_header_is_open = false;
+        bool                            graph_total_pop     = true;
+        std::shared_ptr<graphed_data_t> graph_total_pop_data;  // {times, xs, ys}
+        std::shared_ptr<std::map<PlaylistId, graphed_data_t>>
+                                   graph_data;  // [PlaylistId] -> {times, xs, ys}
+        std::map<PlaylistId, bool> graph_flags = []() {
                 std::map<PlaylistId, bool> tmp;
                 for (const auto & item : bm_helper::playlist_ids_str) {
                         tmp[item.first] = false;
@@ -109,15 +114,24 @@ private:
 
         // members pertaining to data functionality
         struct token {
+                token()                            = default;
                 token & operator=(const token &) & = default;
                 token & operator=(token &&) &      = default;
                 token(const token &)               = default;
                 token(token &&)                    = default;
+                token(std::chrono::zoned_seconds z,
+                      int                        tp,
+                      int                        tpo,
+                      std::map<PlaylistId, int>  pp) :
+                        zt(std::move(z)),
+                        total_pop(std::move(tp)),
+                        total_players_online(std::move(tpo)),
+                        playlist_pop(std::move(pp)) {}
 
                 std::chrono::zoned_seconds zt;
                 int                        total_pop;
-                int                        total_players_online;  // I've never seen it be unequal to total_pop
-                std::map<PlaylistId, int>  playlist_pop;
+                int total_players_online;  // I've never seen it be unequal to total_pop
+                std::map<PlaylistId, int> playlist_pop;
         };
 
         // a bank full of tokens
@@ -125,9 +139,9 @@ private:
         // ... instead of reading in and out of a file...
         // would be neat to separate out an interface
         // and that would take designing another class to basically
-        // -> record, -> write -> read -> save... one class implementation would read / write to the file for every
-        // operation; another implementation would just use the queue...
-        // but I'm not doing that right now
+        // -> record, -> write -> read -> save... one class implementation would read / write to
+        // the file for every operation; another implementation would just use the queue... but
+        // I'm not doing that right now
 
         // it's a deque, as to support iteration through its elements
         std::deque<token> bank;
@@ -148,9 +162,10 @@ private:
         bool show_all;
 
         ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
-        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos, slot6_init_pos;
-        void   SNAPSHOT_PLAYLIST_POSITIONS();
-        void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
+        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos,
+                slot6_init_pos;
+        void SNAPSHOT_PLAYLIST_POSITIONS();
+        void GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 
         // these may end up going away
         bool showstats;
@@ -167,6 +182,11 @@ private:
         // provided functionality
         void record_population();
         void add_last_entry_to_graph_data();
+        void massage_graph_data_operations(
+                bool &,
+                bool &,
+                std::shared_ptr<graphed_data_t>,
+                std::shared_ptr<std::map<PlaylistId, graphed_data_t>>);
         void massage_graph_data();
         void prepare_data();
         void prune_data();
@@ -181,8 +201,8 @@ private:
         void SET_WHICH_MENU_I_AM_IN();
 
         // deque -help
-        ShowPlayerPopulation::token get_first_bank_entry() &&;
-        ShowPlayerPopulation::token get_last_bank_entry() &&;
+        ShowPlayerPopulation::token get_first_bank_entry();
+        ShowPlayerPopulation::token get_last_bank_entry();
 
         // clear -help
         void clear_graph_total_pop_data();
@@ -198,7 +218,7 @@ private:
                 std::string                                   cmd_name,
                 std::function<void(std::vector<std::string>)> do_func,
                 std::string                                   desc,
-                unsigned char                                 PERMISSIONS) const &;
+                unsigned char                                 PERMISSIONS);
 
 public:
         void onLoad() override;
@@ -221,5 +241,5 @@ public:
 
         // THE ONLY THING I CANT SAVE FROM BEING PUBLIC? OH NOOOOO~
         // I COULD FAKE IT BY HIDING IT SOMEWHERE ELSE, BUT THAT WOULD BE KINDA LAME
-        inline static imgui_helper::OverlayHorizontalColumnsSettings h_cols = {-1};
+        inline static imgui_helper::OverlayHorizontalColumnsSettings h_cols = {{-1}};
 };
