@@ -18,7 +18,7 @@ class ShowPlayerPopulation :
 private:
         // variables pertaining to the plugin's functionality
 
-        inline static const int DONT_SHOW_POP_BELOW_THRESHOLD = 10;
+        static inline const int DONT_SHOW_POP_BELOW_THRESHOLD = 10;
         // Why less than 10?
         // Developers tend to jump into modes at their whim
         // The population numbers are still tracked no matter who is in the
@@ -31,8 +31,9 @@ private:
         // and 10 ... because... to give an opportunity to
         // catch enough people in the custom training editor
 
-        inline static const std::string          CMD_PREFIX                 = "spp_";
-        inline static const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
+        static inline const std::string          CMD_PREFIX = "spp_";
+        static inline const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT =
+                std::chrono::seconds {15};
         const std::filesystem::path              RECORD_POPULATION_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
@@ -213,6 +214,21 @@ private:
                 std::string                                   desc,
                 unsigned char                                 PERMISSIONS);
 
+        friend void * ImGuiSettingsReadOpen(
+                ImGuiContext *         ctx,
+                ImGuiSettingsHandler * handler,
+                const char *           name);
+        friend void ImGuiSettingsReadLine(
+                ImGuiContext *,
+                ImGuiSettingsHandler *,
+                void *       entry,
+                const char * line);
+        friend void ImGuiSettingsWriteAll(
+                ImGuiContext *         ctx,
+                ImGuiSettingsHandler * handler,
+                ImGuiTextBuffer *      buf);
+        static inline imgui_helper::OverlayHorizontalColumnsSettings h_cols = {{-1}};
+
 public:
         void onLoad() override;
         void onUnload() noexcept override;
@@ -231,8 +247,4 @@ public:
         std::string GetMenuTitle() override;
         bool        IsActiveOverlay() override;
         bool        ShouldBlockInput() override;
-
-        // THE ONLY THING I CANT SAVE FROM BEING PUBLIC? OH NOOOOO~
-        // I COULD FAKE IT BY HIDING IT SOMEWHERE ELSE, BUT THAT WOULD BE KINDA LAME
-        inline static imgui_helper::OverlayHorizontalColumnsSettings h_cols = {{-1}};
 };
