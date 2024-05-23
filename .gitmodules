@@ -4,9 +4,9 @@
 [submodule "bakkesmodsdk"]
 	path = bakkesmodsdk
 	url = git@github.com:mgavin/bakkesmodsdk
-[submodule "implot"]
-	path = implot
-	url = git@github.com:epezent/implot
 [submodule "imgui_sugar"]
 	path = imgui_sugar
 	url = https://github.com/mnesarco/imgui_sugar
+[submodule "implot_bakkesmod"]
+	path = implot_bakkesmod
+	url = git@github.com:mgavin/implot_bakkesmod

@@ -979,9 +979,9 @@ void ShowPlayerPopulation::RenderSettings() {
                             "time in number of minutes ago (0 = now) (1440 minutes = 1 day)",
                             "pop",
                             ImVec2(-1, 0),
-                            ImPlotFlags_Default,
-                            ImPlotAxisFlags_Default,
-                            ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMin)) {
+                            ImPlotFlags_None,
+                            ImPlotAxisFlags_None,
+                            ImPlotAxisFlags_None | ImPlotAxisFlags_LockMin)) {
                         if (graph_total_pop) {
                                 ImPlot::PlotLine(
                                         "TOTAL POPULATION",
