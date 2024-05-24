@@ -1,0 +1,16 @@
+{
+		"comment": "fuck this. I'm not going to fight with this just to make it understand my intentions.",
+		"comment2": "I just want to remove the funding message from the installation of the husky message. People can still type `npm fund` at their own discretion regardless.",
+		"comment-devDependencies": {
+				"git-format-staged": "^3.1.1",
+				"husky": "^9.0.11"
+		},
+		"scripts": {
+				"install": "npm install git-format-staged; npm install --no-fund husky;",
+				"postinstall": "husky; echo \"node_modules/.bin/git-format-staged --formatter 'clang-format --files=\\\"{}\\\"' '*.c' '*.cpp' '*.cxx' '*.cc' '*.h' '*.hpp' '*.hh' '*.m' '*.mm' '*.js' '*.java'\" > .husky/pre-commit"
+		},
+		"dependencies": {
+				"git-format-staged": "^3.1.1",
+				"husky": "^9.0.11"
+		}
+}
