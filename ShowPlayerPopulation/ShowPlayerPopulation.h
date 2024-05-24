@@ -31,9 +31,8 @@ private:
         // and 10 ... because... to give an opportunity to
         // catch enough people in the custom training editor
 
-        static inline const std::string          CMD_PREFIX = "spp_";
-        static inline const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT =
-                std::chrono::seconds {15};
+        static inline const std::string          CMD_PREFIX                 = "spp_";
+        static inline const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
         const std::filesystem::path              RECORD_POPULATION_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
@@ -76,9 +75,8 @@ private:
                 graphed_data_t(const graphed_data_t &)               = default;
                 graphed_data_t(graphed_data_t &&)                    = default;
 
-                std::vector<std::chrono::zoned_seconds> t;
-                std::vector<float>                      xs;
-                std::vector<float>                      ys;
+                std::vector<double> xs;
+                std::vector<double> ys;
         };
         struct graph_data_grp {
                 graph_data_grp()                                     = default;
@@ -214,20 +212,10 @@ private:
                 std::string                                   desc,
                 unsigned char                                 PERMISSIONS);
 
-        friend void * ImGuiSettingsReadOpen(
-                ImGuiContext *         ctx,
-                ImGuiSettingsHandler * handler,
-                const char *           name);
-        friend void ImGuiSettingsReadLine(
-                ImGuiContext *,
-                ImGuiSettingsHandler *,
-                void *       entry,
-                const char * line);
-        friend void ImGuiSettingsWriteAll(
-                ImGuiContext *         ctx,
-                ImGuiSettingsHandler * handler,
-                ImGuiTextBuffer *      buf);
-        static inline imgui_helper::OverlayHorizontalColumnsSettings h_cols = {{-1}};
+        // friend void * ImGuiSettingsReadOpen(ImGuiContext * ctx, ImGuiSettingsHandler * handler, const char * name);
+        // friend void   ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void * entry, const char * line);
+        // friend void   ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * handler, ImGuiTextBuffer *
+        // buf);
 
 public:
         void onLoad() override;
@@ -247,4 +235,6 @@ public:
         std::string GetMenuTitle() override;
         bool        IsActiveOverlay() override;
         bool        ShouldBlockInput() override;
+
+        static inline imgui_helper::OverlayHorizontalColumnsSettings h_cols = {{-1}};
 };

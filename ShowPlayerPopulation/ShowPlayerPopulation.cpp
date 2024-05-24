@@ -12,7 +12,7 @@
 #include <thread>
 
 #include "csv.hpp"
-#include "implot.h"
+// #include "implot.h"
 
 #include "HookedEvents.h"
 #include "internal/csv_row.hpp"
@@ -295,12 +295,9 @@ void ShowPlayerPopulation::init_graph_data() {
 
         zoned_seconds now {current_zone(), time_point_cast<seconds>(system_clock::now())};
         for (const token & t : bank) {
-                std::chrono::zoned_seconds then      = t.zt;
-                float                      time_diff = static_cast<float>(
-                        duration_cast<minutes>(then.get_local_time() - now.get_local_time())
-                                .count());
-                graph_total_pop_data->t.push_back(then);
-                graph_total_pop_data->xs.push_back(time_diff);
+                std::chrono::zoned_seconds then = t.zt;
+                double ts = then.get_local_time().time_since_epoch().count();
+                graph_total_pop_data->xs.push_back(ts);
                 graph_total_pop_data->ys.push_back(static_cast<float>(t.total_pop));
 
                 for (const auto & entry : t.playlist_pop) {
@@ -310,8 +307,7 @@ void ShowPlayerPopulation::init_graph_data() {
                                 continue;
                         }
 
-                        (*graph_data)[playid].t.push_back(then);
-                        (*graph_data)[playid].xs.push_back(time_diff);
+                        (*graph_data)[playid].xs.push_back(ts);
                         (*graph_data)[playid].ys.push_back(static_cast<float>(pop));
                         graph_flags[playid] = true;
                 }
@@ -368,9 +364,8 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
                 return;
         }
 
-        // I can get away with "0s" as xs.back() because it's ostensibly "now"-ish
-        graph_total_pop_data->t.push_back(t.zt);
-        graph_total_pop_data->xs.push_back(0.0f);
+        double now = std::chrono::system_clock::now().time_since_epoch().count();
+        graph_total_pop_data->xs.push_back(now);
         graph_total_pop_data->ys.push_back(static_cast<float>(t.total_pop));
 
         for (const auto & entry : t.playlist_pop) {
@@ -380,8 +375,7 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
                         continue;
                 }
 
-                (*graph_data)[playid].t.push_back(t.zt);
-                (*graph_data)[playid].xs.push_back(0.0f);
+                (*graph_data)[playid].xs.push_back(now);
                 (*graph_data)[playid].ys.push_back(static_cast<float>(pop));
                 graph_flags[playid] = true;
         }
@@ -417,26 +411,24 @@ void ShowPlayerPopulation::massage_graph_data_operations(
         const token & t = get_last_bank_entry();
 
         // update every time difference in the list...
-        for (size_t i : std::ranges::views::iota(0, static_cast<int>(gtpd->t.size()))) {
-                gtpd->xs[i] =
-                        duration<float, minutes::period> {(gtpd->t[i].get_local_time() - tnow)}
-                                .count();
-        }
+        // for (size_t i : std::ranges::views::iota(0, static_cast<int>(gtpd->t.size()))) {
+        //        gtpd->xs[i] = duration<float, minutes::period> {(gtpd->t[i].get_local_time() -
+        //        tnow)}.count();
+        //}
 
-        for (const auto & entry : t.playlist_pop) {
-                PlaylistId playid = entry.first;
-                int        pop    = entry.second;
-                if (pop < DONT_SHOW_POP_BELOW_THRESHOLD) {
-                        continue;
-                }
-                for (size_t i :
-                     std::ranges::views::iota(0, static_cast<int>((*gd)[playid].t.size()))) {
-                        (*gd)[playid].xs[i] =
-                                duration<float, minutes::period> {
-                                        (*gd)[playid].t[i].get_local_time() - tnow}
-                                        .count();
-                }
-        }
+        // for (const auto & entry : t.playlist_pop) {
+        //         PlaylistId playid = entry.first;
+        //         int        pop    = entry.second;
+        //         if (pop < DONT_SHOW_POP_BELOW_THRESHOLD) {
+        //                 continue;
+        //         }
+        //         for (size_t i : std::ranges::views::iota(0,
+        //         static_cast<int>((*gd)[playid].t.size()))) {
+        //                 (*gd)[playid].xs[i] =
+        //                         duration<float, minutes::period>
+        //                         {(*gd)[playid].t[i].get_local_time() - tnow}.count();
+        //         }
+        // }
 
         data_ready  = true;
         thread_busy = false;
@@ -609,9 +601,11 @@ void ShowPlayerPopulation::CHECK_NOW() {
                 // result in something being "selected", yet nothing gets selected because it's
                 // not technically valid, but this prevents the "Error: Select a playlist" error
                 // from popping up -_-
-                mw.SetPlaylistSelection(
-                        Playlist::EXTRAS_SNOWDAY,
-                        true);  // Technically this isn't a playlist?
+                // mw.SetPlaylistSelection(
+                //        Playlist::AUTO_TOURNAMENT,
+                //        true);  // I hate this broken part of the API. RL will crash if this
+                //        value isn't valid.
+
                 // there isn't an extras playlist anymore...
                 mw.StartMatchmaking(PlaylistCategory::EXTRAS);
                 mw.CancelMatchmaking();
@@ -632,10 +626,16 @@ void ShowPlayerPopulation::print_bank_info() {
 }
 
 void ShowPlayerPopulation::print_graph_data() {
-        std::vector<float> xs = graph_total_pop_data->xs;
-        std::vector<float> ys = graph_total_pop_data->ys;
+        std::vector<double> xs = graph_total_pop_data->xs;
+        std::vector<double> ys = graph_total_pop_data->ys;
         for (int i = 0; i < xs.size(); ++i) {
-                LOG("{} {} {}", graph_total_pop_data->t[i], xs[i], ys[i]);
+                LOG("{} {} {}",
+                    std::chrono::zoned_time<std::chrono::duration<double, std::milli>> {
+                            std::chrono::current_zone(),
+                            std::chrono::system_clock::time_point {}
+                                    + std::chrono::duration<double> {xs[0]}},
+                    xs[i],
+                    ys[i]);
         }
 }
 
@@ -659,8 +659,9 @@ static inline void AddUnderline(ImColor col_) {
 static inline void AlignForWidth(float width, float alignment = 0.5f) {
         float avail = ImGui::GetContentRegionAvail().x;
         float off   = (avail - width) * alignment;
-        if (off > 0.0f)
+        if (off > 0.0f) {
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+        }
 }
 
 /// <summary>
@@ -690,9 +691,12 @@ static inline void TextURL(
         ImGui::PopStyleColor();
         if (ImGui::IsItemHovered()) {
                 if (ImGui::IsMouseClicked(0)) {
-                        wchar_t URL[strlen(URL_) + 1];
-                        MultiByteToWideChar(CP_UTF8, 0, URL_, strlen(URL_), URL, wcslen(URL));
-                        ShellExecute(NULL, L"open", URL, NULL, NULL, SW_SHOWNORMAL);
+                        const int nchar = std::strlen(URL_);
+                        wchar_t * URL   = new wchar_t[nchar + 1];
+                        MultiByteToWideChar(CP_UTF8, 0, URL_, nchar, URL, std::wcslen(URL));
+                        ShellExecuteW(NULL, L"open", URL, NULL, NULL, SW_SHOWNORMAL);
+
+                        delete[] URL;
                 }
                 AddUnderline(ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered]);
                 ImGui::SetTooltip("  Open in browser\n%s", URL_);
@@ -943,10 +947,10 @@ void ShowPlayerPopulation::RenderSettings() {
         ImGui::TextUnformatted("BASED ON VALUES THAT HAVE BEEN SAVED LOCALLY.");
 
         set_StyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.2f, 0.8f, 1.0f));
-        ImPlotLimits plot_limits;
-        plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
+        // ImPlotLimits plot_limits;
+        // plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
         if (has_graph_data && (data_header_is_open = ImGui::CollapsingHeader("Data"))) {
-                massage_graph_data();
+                // massage_graph_data();
 
                 float       width            = 0.0f;
                 std::string when_updates_txt = std::vformat(
@@ -968,76 +972,78 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::SameLine(0.0f, 50.0f);
                 ImGui::TextUnformatted(when_updates_txt.c_str());
 
-                ImPlot::SetNextPlotLimits(
-                        graph_total_pop_data->xs.front(),
-                        0,
-                        0,
-                        std::ranges::max(graph_total_pop_data->ys),
-                        ImGuiCond_FirstUseEver);
-                if (ImPlot::BeginPlot(
-                            "Population Numbers over Time",
-                            "time in number of minutes ago (0 = now) (1440 minutes = 1 day)",
-                            "pop",
-                            ImVec2(-1, 0),
-                            ImPlotFlags_None,
-                            ImPlotAxisFlags_None,
-                            ImPlotAxisFlags_None | ImPlotAxisFlags_LockMin)) {
-                        if (graph_total_pop) {
-                                ImPlot::PlotLine(
-                                        "TOTAL POPULATION",
-                                        graph_total_pop_data->xs.data(),
-                                        graph_total_pop_data->ys.data(),
-                                        static_cast<int>(std::size(graph_total_pop_data->xs)));
-                        }
+                // ImPlot::SetNextPlotLimits(
+                //         graph_total_pop_data->xs.front(),
+                //         std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()),
+                //         0,
+                //         std::ranges::max(graph_total_pop_data->ys),
+                //         ImGuiCond_FirstUseEver);
+                // if (ImPlot::BeginPlot(
+                //             "Population Numbers over Time",
+                //             "time in number of minutes ago (0 = now) (1440 minutes = 1 day)",
+                //             "pop",
+                //             ImVec2(-1, 0),
+                //             ImPlotFlags_None,
+                //             ImPlotAxisFlags_Time,
+                //             ImPlotAxisFlags_None | ImPlotAxisFlags_LockMin)) {
+                //         ImPlot::GetStyle().UseLocalTime = true;
+                //         if (graph_total_pop) {
+                //                 ImPlot::PlotLine(
+                //                         "TOTAL POPULATION",
+                //                         graph_total_pop_data->xs.data(),
+                //                         graph_total_pop_data->ys.data(),
+                //                         static_cast<int>(std::size(graph_total_pop_data->xs)));
+                //         }
 
-                        for (const auto & entry : graph_flags_selected) {
-                                if (!entry.second) {
-                                        continue;
-                                }
-                                ImPlot::PlotLine(
-                                        bm_helper::playlist_ids_str_spaced[entry.first].c_str(),
-                                        (*graph_data)[entry.first].xs.data(),
-                                        (*graph_data)[entry.first].ys.data(),
-                                        static_cast<int>(
-                                                std::size((*graph_data)[entry.first].xs)));
-                        }
-                        plot_limits = ImPlot::GetPlotLimits();
+                //        for (const auto & entry : graph_flags_selected) {
+                //                if (!entry.second) {
+                //                        continue;
+                //                }
+                //                ImPlot::PlotLine(
+                //                        bm_helper::playlist_ids_str_spaced[entry.first].c_str(),
+                //                        (*graph_data)[entry.first].xs.data(),
+                //                        (*graph_data)[entry.first].ys.data(),
+                //                        static_cast<int>(std::size((*graph_data)[entry.first].xs)));
+                //        }
+                //        // plot_limits = ImPlot::GetPlotLimits();
 
-                        duration<float, minutes::period> left_minutes {plot_limits.X.Min};
-                        zoned_seconds                    im_dead {current_zone()};
-                        im_dead =
-                                time_point_cast<seconds>(last_massage_update.get_local_time())
-                                + duration_cast<seconds, float, minutes::period>(left_minutes);
-                        std::string left_dt =
-                                std::vformat("{0:%D} {0:%r}", std::make_format_args(im_dead));
+                //        // duration<float, minutes::period> left_minutes {plot_limits.X.Min};
+                //        // zoned_seconds                    im_dead {current_zone()};
+                //        // im_dead =
+                //        time_point_cast<seconds>(last_massage_update.get_local_time())
+                //        //           + duration_cast<seconds, float,
+                //        minutes::period>(left_minutes);
+                //        // std::string left_dt = std::vformat("{0:%D} {0:%r}",
+                //        std::make_format_args(im_dead));
 
-                        duration<float, minutes::period> right_minutes {plot_limits.X.Max};
-                        zoned_seconds                    im_alive {current_zone()};
-                        im_alive =
-                                time_point_cast<seconds>(last_massage_update.get_local_time())
-                                + duration_cast<seconds, float, minutes::period>(right_minutes);
-                        std::string right_dt =
-                                std::vformat("{0:%D} {0:%r}", std::make_format_args(im_alive));
+                //        // duration<float, minutes::period> right_minutes {plot_limits.X.Max};
+                //        // zoned_seconds                    im_alive {current_zone()};
+                //        // im_alive =
+                //        time_point_cast<seconds>(last_massage_update.get_local_time())
+                //        //            + duration_cast<seconds, float,
+                //        minutes::period>(right_minutes);
+                //        // std::string right_dt = std::vformat("{0:%D} {0:%r}",
+                //        std::make_format_args(im_alive));
 
-                        ImVec2 left_dt_sz  = ImGui::CalcTextSize(left_dt.c_str());
-                        ImVec2 right_dt_sz = ImGui::CalcTextSize(right_dt.c_str());
-                        ImVec2 pos         = ImPlot::GetPlotPos();
-                        ImVec2 psize       = ImPlot::GetPlotSize();
-                        ImPlot::PushPlotClipRect();
-                        ImGui::GetWindowDrawList()->AddText(
-                                pos + ImVec2 {0, psize.y} - ImVec2 {0.0f, left_dt_sz.y}
-                                        + ImVec2 {15.0f, -15.0f},
-                                IM_COL32(255, 255, 255, 255),
-                                left_dt.c_str());
-                        ImGui::GetWindowDrawList()->AddText(
-                                pos + ImVec2 {psize.x, 0}
-                                        + ImVec2 {-right_dt_sz.x, right_dt_sz.y}
-                                        + ImVec2 {-15.0, 5.0f},
-                                IM_COL32(255, 255, 255, 255),
-                                right_dt.c_str());
-                        ImPlot::PopPlotClipRect();
-                        ImPlot::EndPlot();
-                }
+                //        // ImVec2 left_dt_sz  = ImGui::CalcTextSize(left_dt.c_str());
+                //        // ImVec2 right_dt_sz = ImGui::CalcTextSize(right_dt.c_str());
+                //        // ImVec2 pos         = ImPlot::GetPlotPos();
+                //        // ImVec2 psize       = ImPlot::GetPlotSize();
+                //        // ImPlot::PushPlotClipRect();
+                //        // ImGui::GetWindowDrawList()->AddText(
+                //        //        pos + ImVec2 {0, psize.y} - ImVec2 {0.0f, left_dt_sz.y} +
+                //        ImVec2 {15.0f, -15.0f},
+                //        //        IM_COL32(255, 255, 255, 255),
+                //        //        left_dt.c_str());
+                //        // ImGui::GetWindowDrawList()->AddText(
+                //        //        pos + ImVec2 {psize.x, 0} + ImVec2 {-right_dt_sz.x,
+                //        right_dt_sz.y}
+                //        //                + ImVec2 {-15.0, 5.0f},
+                //        //        IM_COL32(255, 255, 255, 255),
+                //        //        right_dt.c_str());
+                //        // ImPlot::PopPlotClipRect();
+                //        ImPlot::EndPlot();
+                // }
                 // Maybe a list with selectable elements
                 set_StyleColor(ImGuiCol_Header, ImVec4(0.19f, 0.85f, 0.12f, 0.7f));
                 ImGui::BeginColumns(
@@ -1284,13 +1290,11 @@ ShowPlayerPopulation::token ShowPlayerPopulation::get_last_bank_entry() {
 }
 
 void ShowPlayerPopulation::clear_graph_total_pop_data() {
-        graph_total_pop_data->t.clear();
         graph_total_pop_data->xs.clear();
         graph_total_pop_data->ys.clear();
 }
 void ShowPlayerPopulation::clear_graph_data() {
         for (auto & item : std::ranges::views::values(*graph_data)) {
-                item.t.clear();
                 item.xs.clear();
                 item.ys.clear();
         }
@@ -1441,6 +1445,11 @@ void ShowPlayerPopulation::GET_DEFAULT_POP_NUMBER_PLACEMENTS() {
 void ShowPlayerPopulation::SetImGuiContext(uintptr_t ctx) {
         plugin_ctx = reinterpret_cast<ImGuiContext *>(ctx);
         ImGui::SetCurrentContext(plugin_ctx);
+
+        // bakkesmod doesn't handle implot's requirements for the call to be made to
+        // ImPlot::CreateContext. It only does it for ImGui. So, I'm just calling it here to
+        // create it for the lifetime of the plugin, even though I don't care how it's handled.
+        // ImPlot::CreateContext();
 }
 
 /// <summary>
@@ -1864,7 +1873,7 @@ static void ImGuiSettingsWriteAll(
 }
 
 /// <summary>
-/// do the following on menu open
+/// do the following on popup open
 /// </summary>
 void ShowPlayerPopulation::OnOpen() {
         is_overlay_open = true;
@@ -1876,11 +1885,17 @@ void ShowPlayerPopulation::OnOpen() {
         ini_handler.ReadLineFn = &ImGuiSettingsReadLine;
         ini_handler.WriteAllFn = &ImGuiSettingsWriteAll;
 
-        (plugin_ctx->SettingsHandlers).push_back(ini_handler);
+        std::ofstream f {gameWrapper->GetDataFolder().string() + "kay.txt"};
+        f << std::vformat(
+                "{:X}",
+                std::make_format_args(reinterpret_cast<uintptr_t>(plugin_ctx)))
+          << std::endl;
+
+        // (plugin_ctx->SettingsHandlers).push_back(ini_handler);
 }
 
 /// <summary>
-/// do the following on menu close
+/// do the following on popup menu close
 /// </summary>
 void ShowPlayerPopulation::OnClose() {
         is_overlay_open = false;
@@ -1890,7 +1905,7 @@ void ShowPlayerPopulation::OnClose() {
                 return;
         }
 
-        (plugin_ctx->SettingsHandlers).erase(igsh);
+        // (plugin_ctx->SettingsHandlers).erase(igsh);
 }
 
 /// <summary>
@@ -1934,13 +1949,15 @@ bool ShowPlayerPopulation::ShouldBlockInput() {
 
 /// <summary>
 ///  do the following when your plugin is unloaded
+///  destroy things
+///  dont throw here
+///
+///  DONT DO ANYTHING HERE BECAUSE IT ISNT GUARANTEED (UNLESS YOU MANUALLY UNLOAD PLUGIN)
+///  SO IT'S JUST KIND OF FOR EASE OF DEVELOPMENT SINCE REBUILD = UNLOAD/LOAD
 /// </summary>
 void ShowPlayerPopulation::onUnload() noexcept {
-        // destroy things
-        // dont throw here
+        // ImPlot::DestroyContext();
 
-        // DONT DO ANYTHING HERE BECAUSE IT ISNT GUARANTEED (UNLESS YOU MANUALLY UNLOAD PLUGIN)
-        // SO IT'S JUST KIND OF FOR EASE OF DEVELOPMENT SINCE REBUILD = UNLOAD/LOAD
         prune_data();
         write_data_to_file();
 }

@@ -44,7 +44,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\matthew\source\repos\ShowPlayerPopulation\imgui_sugar;$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui;C:\Users\matthew\source\repos\ShowPlayerPopulation\implot;C:\Users\matthew\source\repos\ShowPlayerPopulation\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\matthew\source\repos\ShowPlayerPopulation\imgui_sugar;$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui;C:\Users\matthew\source\repos\ShowPlayerPopulation\implot_bakkesmod;C:\Users\matthew\source\repos\ShowPlayerPopulation\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -59,7 +59,8 @@
     <None Include="vs_property_pages\BakkesMod.props" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\implot\implot.cpp" />
+    <ClCompile Include="..\implot_bakkesmod\implot.cpp" />
+    <ClCompile Include="..\implot_bakkesmod\implot_items.cpp" />
     <ClCompile Include="ShowPlayerPopulation.cpp" />
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.cpp" />
     <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imguivariouscontrols.cpp" />
@@ -83,7 +84,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\imgui_sugar\imgui_sugar.hpp" />
-    <ClInclude Include="..\implot\implot.h" />
+    <ClInclude Include="..\implot_bakkesmod\implot.h" />
+    <ClInclude Include="..\implot_bakkesmod\implot_internal.h" />
     <ClInclude Include="imgui_helper.h" />
     <ClInclude Include="ShowPlayerPopulation.h" />
     <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h" />

@@ -5,9 +5,12 @@
 				"git-format-staged": "^3.1.1",
 				"husky": "^9.0.11"
 		},
+		"comment3": "thank goodness && in bash shell runs commands together like in cmd.exe",
 		"scripts": {
-				"install": "npm install git-format-staged; npm install --no-fund husky;",
-				"postinstall": "husky; echo \"node_modules/.bin/git-format-staged --formatter 'clang-format --files=\\\"{}\\\"' '*.c' '*.cpp' '*.cxx' '*.cc' '*.h' '*.hpp' '*.hh' '*.m' '*.mm' '*.js' '*.java'\" > .husky/pre-commit"
+				"comment4": "Tired of its special fucking conditions.",
+				"preinstall": "npm config set fund false",
+				"install": "npm install git-format-staged@\">=3.0.0\" && npm install --no-fund husky@\">=9.0.0\"",
+				"postinstall": "npx husky && echo npx git-format-staged --formatter 'clang-format -i \"{}\"' '*.c' '*.cpp' '*.cxx' '*.cc' '*.h' '*.hpp' '*.hh' '*.m' '*.mm' '*.js' '*.java' > .husky/pre-commit"
 		},
 		"dependencies": {
 				"git-format-staged": "^3.1.1",
