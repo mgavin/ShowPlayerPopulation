@@ -44,7 +44,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\matthew\source\repos\ShowPlayerPopulation\imgui_sugar;$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui;C:\Users\matthew\source\repos\ShowPlayerPopulation\implot;C:\Users\matthew\source\repos\ShowPlayerPopulation\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\matthew\source\repos\ShowPlayerPopulation\bakkesmodsdk\include\bakkesmod\imgui;C:\Users\matthew\source\repos\ShowPlayerPopulation\imgui_sugar;C:\Users\matthew\source\repos\ShowPlayerPopulation\bakkesmodsdk\include;C:\Users\matthew\source\repos\ShowPlayerPopulation\implot_bakkesmod;C:\Users\matthew\source\repos\ShowPlayerPopulation\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -59,18 +59,18 @@
     <None Include="vs_property_pages\BakkesMod.props" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\implot\implot.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imguivariouscontrols.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_additions.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_rangeslider.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_searchablecombo.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_timeline.cpp" />
+    <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\implot_bakkesmod\implot.cpp" />
     <ClCompile Include="ShowPlayerPopulation.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imguivariouscontrols.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_additions.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_draw.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_impl_dx11.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_impl_win32.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_rangeslider.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_searchablecombo.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_timeline.cpp" />
-    <ClCompile Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\csv-parser\include\internal\basic_csv_parser.cpp" />
     <ClCompile Include="..\csv-parser\include\internal\col_names.cpp" />
     <ClCompile Include="..\csv-parser\include\internal\csv_format.cpp" />
@@ -82,23 +82,23 @@
     <ClCompile Include="..\csv-parser\include\internal\csv_utility.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imguivariouscontrols.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_additions.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_impl_dx11.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_internal.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_rangeslider.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_searchablecombo.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_timeline.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imstb_truetype.h" />
     <ClInclude Include="..\imgui_sugar\imgui_sugar.hpp" />
-    <ClInclude Include="..\implot\implot.h" />
+    <ClInclude Include="..\implot_bakkesmod\implot.h" />
     <ClInclude Include="imgui_helper.h" />
     <ClInclude Include="ShowPlayerPopulation.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imguivariouscontrols.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_additions.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_impl_dx11.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_impl_win32.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_internal.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_rangeslider.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_searchablecombo.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imgui_timeline.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imstb_rectpack.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imstb_textedit.h" />
-    <ClInclude Include="$(BakkesModPath)\bakkesmodsdk\include\bakkesmod\imgui\imstb_truetype.h" />
     <ClInclude Include="..\csv-parser\include\csv.hpp" />
     <ClInclude Include="..\csv-parser\include\internal\basic_csv_parser.hpp" />
     <ClInclude Include="..\csv-parser\include\internal\col_names.hpp" />

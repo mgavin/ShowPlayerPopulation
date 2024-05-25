@@ -31,9 +31,8 @@ private:
         // and 10 ... because... to give an opportunity to
         // catch enough people in the custom training editor
 
-        static inline const std::string          CMD_PREFIX = "spp_";
-        static inline const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT =
-                std::chrono::seconds {15};
+        static inline const std::string          CMD_PREFIX                 = "spp_";
+        static inline const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
         const std::filesystem::path              RECORD_POPULATION_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
@@ -76,19 +75,25 @@ private:
                 graphed_data_t(const graphed_data_t &)               = default;
                 graphed_data_t(graphed_data_t &&)                    = default;
 
-                std::vector<std::chrono::zoned_seconds> t;
-                std::vector<float>                      xs;
-                std::vector<float>                      ys;
-        };
-        struct graph_data_grp {
-                graph_data_grp()                                     = default;
-                graph_data_grp & operator=(const graph_data_grp &) & = default;
-                graph_data_grp & operator=(graph_data_grp &&) &      = default;
-                graph_data_grp(const graph_data_grp &)               = default;
-                graph_data_grp(graph_data_grp &&)                    = default;
+                std::vector<float> xs;
+                std::vector<float> ys;
 
-                graphed_data_t                       a;
-                std::map<PlaylistId, graphed_data_t> b;
+                /// <summary>
+                /// takes a float value and converts it to a string representing a datetime
+                /// I think I should allow 2 rows - 32 characters max
+                ///
+                /// The general format is - takes a "tick value" (a float) and
+                /// translates it into a custom string.
+                /// </summary>
+                /// <param name="dur">The amount of time since the UNIX epoch</param>
+                /// <returns></returns>
+                inline static std::string xlabel_transform_func(float inp) {
+                        std::chrono::zoned_time tp {
+                                std::chrono::current_zone(),
+                                std::chrono::sys_time {
+                                        std::chrono::duration<float, std::chrono::seconds::period> {inp}}};
+                        return std::vformat("{0:%X}\n{0:%x}", std::make_format_args(tp));
+                }
         };
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
@@ -214,19 +219,9 @@ private:
                 std::string                                   desc,
                 unsigned char                                 PERMISSIONS);
 
-        friend void * ImGuiSettingsReadOpen(
-                ImGuiContext *         ctx,
-                ImGuiSettingsHandler * handler,
-                const char *           name);
-        friend void ImGuiSettingsReadLine(
-                ImGuiContext *,
-                ImGuiSettingsHandler *,
-                void *       entry,
-                const char * line);
-        friend void ImGuiSettingsWriteAll(
-                ImGuiContext *         ctx,
-                ImGuiSettingsHandler * handler,
-                ImGuiTextBuffer *      buf);
+        friend void * ImGuiSettingsReadOpen(ImGuiContext * ctx, ImGuiSettingsHandler * handler, const char * name);
+        friend void   ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void * entry, const char * line);
+        friend void   ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * handler, ImGuiTextBuffer * buf);
         static inline imgui_helper::OverlayHorizontalColumnsSettings h_cols = {{-1}};
 
 public:
