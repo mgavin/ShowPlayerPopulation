@@ -386,7 +386,8 @@ void ShowPlayerPopulation::massage_graph_data_operations(
 
         // update every time difference in the list...
         // for (size_t i : std::ranges::views::iota(0, static_cast<int>(gtpd->t.size()))) {
-        //        gtpd->xs[i] = duration<float, minutes::period> {(gtpd->t[i].get_local_time() - tnow)}.count();
+        //        gtpd->xs[i] = duration<float, minutes::period> {(gtpd->t[i].get_local_time() -
+        //        tnow)}.count();
         //}
 
         // for (const auto & entry : t.playlist_pop) {
@@ -395,10 +396,11 @@ void ShowPlayerPopulation::massage_graph_data_operations(
         //         if (pop < DONT_SHOW_POP_BELOW_THRESHOLD) {
         //                 continue;
         //         }
-        //         for (size_t i : std::ranges::views::iota(0, static_cast<int>((*gd)[playid].t.size()))) {
+        //         for (size_t i : std::ranges::views::iota(0,
+        //         static_cast<int>((*gd)[playid].t.size()))) {
         //                 (*gd)[playid].xs[i] =
-        //                         duration<float, minutes::period> {(*gd)[playid].t[i].get_local_time() -
-        //                         tnow}.count();
+        //                         duration<float, minutes::period>
+        //                         {(*gd)[playid].t[i].get_local_time() - tnow}.count();
         //         }
         // }
 
@@ -566,8 +568,10 @@ void ShowPlayerPopulation::CHECK_NOW() {
                 // result in something being "selected", yet nothing gets selected because it's
                 // not technically valid, but this prevents the "Error: Select a playlist" error
                 // from popping up -_-
-                mw.SetPlaylistSelection(Playlist::EXTRAS_SNOWDAY,
-                                        true);  // Technically this isn't a playlist?
+
+                // I'm so over this. Fuck it and fuck this broken API.
+                // mw.SetPlaylistSelection(Playlist::EXTRAS_SNOWDAY,
+                //                        true);
                 // there isn't an extras playlist anymore...
                 mw.StartMatchmaking(PlaylistCategory::EXTRAS);
                 mw.CancelMatchmaking();
@@ -591,8 +595,10 @@ void ShowPlayerPopulation::print_graph_data() {
         std::vector<float> ys = graph_total_pop_data->ys;
 
         for (int i = 0; i < xs.size(); ++i) {
-                // std::chrono::duration<float, std::chrono::seconds::period> t {xs[i]};
-                // LOG("{} {} {}", std::chrono::system_clock::time_point {} + t, xs[i], ys[i]);
+                std::chrono::zoned_time tp {
+                        std::chrono::current_zone(),
+                        std::chrono::sys_time {std::chrono::duration<float, std::chrono::seconds::period> {xs[i]}}};
+                LOG("{} {} {}", tp, xs[i], ys[i]);
         }
 }
 
@@ -889,7 +895,7 @@ void ShowPlayerPopulation::RenderSettings() {
         ImPlotLimits plot_limits;
         plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
         if (has_graph_data && (data_header_is_open = ImGui::CollapsingHeader("Data"))) {
-                massage_graph_data();
+                // massage_graph_data();
 
                 float       width = 0.0f;
                 std::string when_updates_txt =
@@ -909,27 +915,24 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::SameLine(0.0f, 50.0f);
                 ImGui::TextUnformatted(when_updates_txt.c_str());
 
-                // this is more tightly coupled to implot, being that it understands here that these values
-                // will be used for the plot that ultimately serves a function defined here
-                // float time_since_epoch = std::chrono::ceil<std::chrono::system_clock::duration, float, std::milli>(
-                //                                 (std::chrono::system_clock::now()).time_since_epoch())
-                //                                 .count();
-                float time_since_epoch = 0;
+                // this is more tightly coupled to implot, being that it understands here that
+                // these values will be used for the plot that ultimately serves a function
                 ImPlot::SetNextPlotLimits(
                         graph_total_pop_data->xs.front(),
-                        time_since_epoch,
+                        graph_total_pop_data->xs.back(),
                         0,
                         std::ranges::max(graph_total_pop_data->ys),
                         ImGuiCond_FirstUseEver);
+                ImPlot::GetStyle().x_label_tf = &graphed_data_t::xlabel_transform_func;
+                ImPlot::GetStyle().x_mouse_tf = &graphed_data_t::xval_mouse_func;
                 if (ImPlot::BeginPlot(
                             "Population Numbers over Time",
-                            "time in number of minutes ago (0 = now) (1440 minutes = 1 day)",
+                            "time",
                             "pop",
-                            ImVec2(-1, 0),
+                            ImVec2(-1, 350),
                             ImPlotFlags_Default,
-                            ImPlotAxisFlags_CustomFormat,
+                            ImPlotAxisFlags_Default | ImPlotAxisFlags_CustomFormat,
                             ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMin)) {
-                        ImPlot::GetStyle().x_label_tf = &graphed_data_t::xlabel_transform_func;
                         if (graph_total_pop) {
                                 ImPlot::PlotLine(
                                         "TOTAL POPULATION",
@@ -948,35 +951,6 @@ void ShowPlayerPopulation::RenderSettings() {
                                         (*graph_data)[entry.first].ys.data(),
                                         static_cast<int>(std::size((*graph_data)[entry.first].xs)));
                         }
-                        plot_limits = ImPlot::GetPlotLimits();
-
-                        duration<float, minutes::period> left_minutes {plot_limits.X.Min};
-                        zoned_seconds                    im_dead {current_zone()};
-                        im_dead = time_point_cast<seconds>(last_massage_update.get_local_time())
-                                  + duration_cast<seconds, float, minutes::period>(left_minutes);
-                        std::string left_dt = std::vformat("{0:%D} {0:%r}", std::make_format_args(im_dead));
-
-                        duration<float, minutes::period> right_minutes {plot_limits.X.Max};
-                        zoned_seconds                    im_alive {current_zone()};
-                        im_alive = time_point_cast<seconds>(last_massage_update.get_local_time())
-                                   + duration_cast<seconds, float, minutes::period>(right_minutes);
-                        std::string right_dt = std::vformat("{0:%D} {0:%r}", std::make_format_args(im_alive));
-
-                        ImVec2 left_dt_sz  = ImGui::CalcTextSize(left_dt.c_str());
-                        ImVec2 right_dt_sz = ImGui::CalcTextSize(right_dt.c_str());
-                        ImVec2 pos         = ImPlot::GetPlotPos();
-                        ImVec2 psize       = ImPlot::GetPlotSize();
-                        ImPlot::PushPlotClipRect();
-                        ImGui::GetWindowDrawList()->AddText(
-                                pos + ImVec2 {0, psize.y} - ImVec2 {0.0f, left_dt_sz.y} + ImVec2 {15.0f, -15.0f},
-                                IM_COL32(255, 255, 255, 255),
-                                left_dt.c_str());
-                        ImGui::GetWindowDrawList()->AddText(
-                                pos + ImVec2 {psize.x, 0} + ImVec2 {-right_dt_sz.x, right_dt_sz.y}
-                                        + ImVec2 {-15.0, 5.0f},
-                                IM_COL32(255, 255, 255, 255),
-                                right_dt.c_str());
-                        ImPlot::PopPlotClipRect();
                         ImPlot::EndPlot();
                 }
                 // Maybe a list with selectable elements

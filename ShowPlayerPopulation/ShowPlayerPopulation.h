@@ -92,7 +92,15 @@ private:
                                 std::chrono::current_zone(),
                                 std::chrono::sys_time {
                                         std::chrono::duration<float, std::chrono::seconds::period> {inp}}};
-                        return std::vformat("{0:%X}\n{0:%x}", std::make_format_args(tp));
+                        return std::vformat("{0:%R%p}\n{0:%x}                             ", std::make_format_args(tp));
+                }
+
+                inline static std::string xval_mouse_func(float inp) {
+                        std::chrono::zoned_time tp {
+                                std::chrono::current_zone(),
+                                std::chrono::sys_time {
+                                        std::chrono::duration<float, std::chrono::seconds::period> {inp}}};
+                        return std::vformat("{0:%r}\n{0:%x}      ", std::make_format_args(tp));
                 }
         };
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
@@ -105,7 +113,8 @@ private:
         bool                            graph_total_pop      = true;
         std::shared_ptr<graphed_data_t> graph_total_pop_data = std::make_shared<graphed_data_t>();  // {times, xs, ys}
         std::shared_ptr<std::map<PlaylistId, graphed_data_t>> graph_data =
-                std::make_shared<std::map<PlaylistId, graphed_data_t>>();  // [PlaylistId] -> {times, xs, ys}
+                std::make_shared<std::map<PlaylistId, graphed_data_t>>();  // [PlaylistId] ->
+                                                                           // {times, xs, ys}
         std::map<PlaylistId, bool> graph_flags = []() {
                 std::map<PlaylistId, bool> tmp;
                 for (const auto & item : bm_helper::playlist_ids_str) {
@@ -129,8 +138,8 @@ private:
                         playlist_pop(std::move(pp)) {}
 
                 std::chrono::zoned_seconds zt;
-                int                        total_pop;
-                int                        total_players_online;  // I've never seen it be unequal to total_pop
+                int                        total_pop            = 0;
+                int                        total_players_online = 0;  // I've never seen it be unequal to total_pop
                 std::map<PlaylistId, int>  playlist_pop;
         };
 
