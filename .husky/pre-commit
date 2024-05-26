@@ -1,1 +1,1 @@
-npx git-format-staged --formatter 'clang-format -i "{}"' '*.c' '*.cpp' '*.cxx' '*.cc' '*.h' '*.hpp' '*.hh' '*.m' '*.mm' '*.js' '*.java' --verbose
+npx git-format-staged --formatter 'clang-format -i "{}"' '*.c' '*.cpp' '*.cxx' '*.cc' '*.h' '*.hpp' '*.hh' '*.m' '*.mm' '*.js' '*.java'
