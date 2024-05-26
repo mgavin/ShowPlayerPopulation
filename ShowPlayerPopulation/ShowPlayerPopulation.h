@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <ctime>
 
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "bakkesmod/plugin/pluginsettingswindow.h"
@@ -33,11 +34,14 @@ private:
 
         static inline const std::string CMD_PREFIX = "spp_";
         const std::filesystem::path     RECORD_POPULATION_FILE =
-                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
+                gameWrapper->GetDataFolder().append(
+                        "ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
-                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
-        const std::string DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
-        const std::string DATETIME_PARSE_STR  = "%FT%T%z";
+                gameWrapper->GetDataFolder().append(
+                        "ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
+        const std::string                            DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
+        const std::string                            DATETIME_PARSE_STR  = "%FT%T%z";
+        static inline const std::chrono::time_zone * tz = std::chrono::current_zone();
 
         // flags for different points in the plugin
         bool is_overlay_open       = false;
@@ -87,49 +91,69 @@ private:
                 /// <param name="dur">The amount of time since the UNIX epoch</param>
                 /// <returns></returns>
                 inline static std::string xlabel_transform_func(float inp) {
-                        std::chrono::zoned_time tp {
-                                std::chrono::current_zone(),
-                                std::chrono::sys_time {
-                                        std::chrono::duration<float, std::chrono::seconds::period> {inp}}};
-                        int hours = std::chrono::hh_mm_ss(tp.get_local_time().time_since_epoch()).hours().count() % 12;
-                        // if hours != 0, hours, otw 12(because modulo)
-                        hours     = hours ? hours : 12;
+                        // std::chrono::zoned_time tp {
+                        //         std::chrono::current_zone(),
+                        //         std::chrono::sys_time {
+                        //                 std::chrono::duration<float,
+                        //                 std::chrono::seconds::period> {inp}}};
+                        // std::tm tm {};
+                        // std::chrono::zoned_seconds tp {tz};
+
+                        // int hours =
+                        // std::chrono::hh_mm_ss(tp.get_local_time().time_since_epoch()).hours().count()
+                        // % 12; if hours != 0, hours, otw 12(because modulo)
+                        hours = hours ? hours : 12;
                         return std::vformat(
                                 "{2:s}{0:^9}\n{1:^10}",
                                 std::make_format_args(
                                         /*                             */
-                                        std::vformat("{1:}:{0:%M%p}", std::make_format_args(tp, (hours ? hours : 12))),
+                                        std::vformat(
+                                                "{1:}:{0:%M%p}",
+                                                std::make_format_args(
+                                                        tp,
+                                                        (hours ? hours : 12))),
                                         std::vformat("{0:%x}", std::make_format_args(tp)),
                                         hours < 10 ? " " : ""));
                 }
 
                 inline static std::string xval_mouse_func(float inp) {
-                        std::chrono::zoned_time tp {
-                                std::chrono::current_zone(),
-                                std::chrono::sys_time {
-                                        std::chrono::duration<float, std::chrono::seconds::period> {inp}}};
-
-                        int hours = std::chrono::hh_mm_ss(tp.get_local_time().time_since_epoch()).hours().count() % 12;
-                        hours     = hours ? hours : 12;
+                        // std::chrono::zoned_time tp {
+                        //         std::chrono::current_zone(),
+                        //         std::chrono::sys_time {
+                        //                 std::chrono::duration<float,
+                        //                 std::chrono::seconds::period> {inp}}};
+                        std::chrono::zoned_time tp {std::chrono::current_zone()};
+                        int                     hours =
+                                std::chrono::hh_mm_ss(tp.get_local_time().time_since_epoch())
+                                        .hours()
+                                        .count()
+                                % 12;
+                        hours = hours ? hours : 12;
                         return std::vformat(
                                 "{2:s}{0:^11}\n{1:^12}",
                                 std::make_format_args(
                                         std::vformat(" {0:%x}", std::make_format_args(tp)),
-                                        std::vformat("{1:}:{0:%M:%S%p}", std::make_format_args(tp, hours ? hours : 12)),
+                                        std::vformat(
+                                                "{1:}:{0:%M:%S%p}",
+                                                std::make_format_args(tp, hours ? hours : 12)),
                                         hours > 9 ? " " : ""));
                 }
         };
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
-        int                                                            TOTAL_IN_GAME_POP   = 0;
-        bool                                                           has_graph_data      = false;
-        bool                                                           data_header_is_open = false;
-        bool                                                           graph_total_pop     = true;
-        std::shared_ptr<graphed_data_t> graph_total_pop_data = std::make_shared<graphed_data_t>();  // {times, xs, ys}
+        int                                                            TOTAL_IN_GAME_POP = 0;
+        bool                                                           has_graph_data = false;
+        bool                            data_header_is_open                           = false;
+        bool                            graph_total_pop                               = true;
+        bool                            graph_total_in_game                           = true;
+        std::shared_ptr<graphed_data_t> graph_total_pop_data =
+                std::make_shared<graphed_data_t>();
+        std::shared_ptr<graphed_data_t> graph_total_in_game_data =
+                std::make_shared<graphed_data_t>();
         std::shared_ptr<std::map<PlaylistId, graphed_data_t>> graph_data =
-                std::make_shared<std::map<PlaylistId, graphed_data_t>>();  // [PlaylistId] ->
-                                                                           // {times, xs, ys}
+                std::make_shared<std::map<PlaylistId, graphed_data_t>>();
+
         std::map<PlaylistId, bool> graph_flags = []() {
                 std::map<PlaylistId, bool> tmp;
                 for (const auto & item : bm_helper::playlist_ids_str) {
@@ -146,16 +170,19 @@ private:
                 token & operator=(token &&) &      = default;
                 token(const token &)               = default;
                 token(token &&)                    = default;
-                token(std::chrono::zoned_seconds z, int tp, int tpo, std::map<PlaylistId, int> pp) :
+                token(std::chrono::zoned_seconds z,
+                      int                        tp,
+                      int                        tpo,
+                      std::map<PlaylistId, int>  pp) :
                         zt(std::move(z)),
                         total_pop(std::move(tp)),
                         total_players_online(std::move(tpo)),
                         playlist_pop(std::move(pp)) {}
 
                 std::chrono::zoned_seconds zt;
-                int                        total_pop            = 0;
-                int                        total_players_online = 0;  // I've never seen it be unequal to total_pop
-                std::map<PlaylistId, int>  playlist_pop;
+                int                        total_pop = 0;
+                int total_players_online = 0;  // I've never seen it be unequal to total_pop
+                std::map<PlaylistId, int> playlist_pop;
         };
 
         // a bank full of tokens
@@ -186,9 +213,10 @@ private:
         bool show_all;
 
         ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
-        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos, slot6_init_pos;
-        void   SNAPSHOT_PLAYLIST_POSITIONS();
-        void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
+        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos,
+                slot6_init_pos;
+        void SNAPSHOT_PLAYLIST_POSITIONS();
+        void GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 
         // these may end up going away
         bool showstats;
@@ -223,6 +251,7 @@ private:
 
         // clear -help
         void clear_graph_total_pop_data();
+        void clear_graph_total_in_game_data();
         void clear_graph_data();
         void clear_graph_flags();
 
@@ -237,9 +266,19 @@ private:
                 std::string                                   desc,
                 unsigned char                                 PERMISSIONS);
 
-        friend void * ImGuiSettingsReadOpen(ImGuiContext * ctx, ImGuiSettingsHandler * handler, const char * name);
-        friend void   ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void * entry, const char * line);
-        friend void   ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * handler, ImGuiTextBuffer * buf);
+        friend void * ImGuiSettingsReadOpen(
+                ImGuiContext *         ctx,
+                ImGuiSettingsHandler * handler,
+                const char *           name);
+        friend void ImGuiSettingsReadLine(
+                ImGuiContext *,
+                ImGuiSettingsHandler *,
+                void *       entry,
+                const char * line);
+        friend void ImGuiSettingsWriteAll(
+                ImGuiContext *         ctx,
+                ImGuiSettingsHandler * handler,
+                ImGuiTextBuffer *      buf);
         static inline imgui_helper::OverlayHorizontalColumnsSettings h_cols = {{-1}};
 
 public:
