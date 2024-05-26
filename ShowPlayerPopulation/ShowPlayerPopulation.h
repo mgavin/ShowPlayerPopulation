@@ -55,8 +55,6 @@ private:
 
         // ImGui related variables
         ImGuiContext * plugin_ctx;
-        ImFont *       overlay_font_18           = nullptr;
-        ImFont *       overlay_font_22           = nullptr;
         ImVec4         chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
         ImVec4         chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
         ImColor        col_black                 = ImColor {
@@ -97,7 +95,6 @@ private:
                         return std::vformat(
                                 "{2:s}{0:^9}\n{1:^10}",
                                 std::make_format_args(
-                                        /*                             */
                                         std::vformat("{1:}:{0:%M%p}", std::make_format_args(tp, (hours ? hours : 12))),
                                         std::vformat("{0:%x}", std::make_format_args(tp)),
                                         hours < 10 ? " " : ""));
@@ -175,32 +172,12 @@ private:
         const int hours_max     = 168;
         int       hours_kept    = 24;
 
-        // flags for showing numbers above playlists
-        // ordered 1-6, top left to bottom right
-        bool slot1 = false;
-        bool slot2 = false;
-        bool slot3 = false;
-        bool slot4 = false;
-        bool slot5 = false;
-        bool slot6 = false;
-        bool show_all;
-
-        ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
-        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos, slot6_init_pos;
-        void   SNAPSHOT_PLAYLIST_POSITIONS();
-        void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
-
-        // these may end up going away
-        bool showstats;
-        bool curiouser;
-
         // member functions pertaining to general functionality
         // init
         void init_datafile();
         void init_cvars();
         void init_hooked_events();
         void init_graph_data();
-        void init_settings_handler();
 
         // provided functionality
         void record_population();
@@ -209,10 +186,6 @@ private:
         void prune_data();
         void write_data_to_file();
         void CHECK_NOW();
-
-        // debug/print
-        void print_bank_info();
-        void print_graph_data();
 
         // helper functions
         void SET_WHICH_MENU_I_AM_IN();
@@ -229,13 +202,6 @@ private:
         // chrono -help
         std::string                get_current_datetime_str();
         std::chrono::zoned_seconds get_timepoint_from_str(std::string);
-
-        // bakkesmod -help
-        void add_notifier(
-                std::string                                   cmd_name,
-                std::function<void(std::vector<std::string>)> do_func,
-                std::string                                   desc,
-                unsigned char                                 PERMISSIONS);
 
         friend void * ImGuiSettingsReadOpen(ImGuiContext * ctx, ImGuiSettingsHandler * handler, const char * name);
         friend void   ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void * entry, const char * line);
