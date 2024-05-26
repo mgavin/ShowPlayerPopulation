@@ -29,6 +29,9 @@ void ShowPlayerPopulation::onLoad() {
         _globalCVarManager        = cvarManager;
         HookedEvents::gameWrapper = gameWrapper;
 
+        // init time zone for graphs
+        _putenv_s("TZ", tz->name().data());
+
         init_datafile();
         init_cvars();
         init_hooked_events();
@@ -230,6 +233,7 @@ void ShowPlayerPopulation::init_graph_data() {
         // clear graph data, just in case it came from a previous time where it had data
         // if it doesn't have data already, then this effectively does nothing
         clear_graph_total_pop_data();
+        clear_graph_total_in_game_data();
         clear_graph_data();
         clear_graph_flags();
 
@@ -238,6 +242,7 @@ void ShowPlayerPopulation::init_graph_data() {
                 graph_total_pop_data->xs.push_back(thenf);
                 graph_total_pop_data->ys.push_back(static_cast<float>(t.total_pop));
 
+                int total_in_game = 0;
                 for (const auto & entry : t.playlist_pop) {
                         PlaylistId playid = entry.first;
                         int        pop    = entry.second;
@@ -248,7 +253,12 @@ void ShowPlayerPopulation::init_graph_data() {
                         (*graph_data)[playid].xs.push_back(thenf);
                         (*graph_data)[playid].ys.push_back(static_cast<float>(pop));
                         graph_flags[playid] = true;
+
+                        total_in_game += pop;
                 }
+
+                graph_total_in_game_data->xs.push_back(thenf);
+                graph_total_in_game_data->ys.push_back(total_in_game);
 
                 has_graph_data = true;
         }
@@ -293,6 +303,7 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
         graph_total_pop_data->xs.push_back(timef);
         graph_total_pop_data->ys.push_back(static_cast<float>(t.total_pop));
 
+        int total_in_game = 0;
         for (const auto & entry : t.playlist_pop) {
                 PlaylistId playid = entry.first;
                 int        pop    = entry.second;
@@ -303,7 +314,13 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
                 (*graph_data)[playid].xs.push_back(timef);
                 (*graph_data)[playid].ys.push_back(static_cast<float>(pop));
                 graph_flags[playid] = true;
+
+                total_in_game += pop;
         }
+
+        graph_total_in_game_data->xs.push_back(timef);
+        graph_total_in_game_data->ys.push_back(total_in_game);
+
         has_graph_data = true;
 }
 
@@ -760,6 +777,14 @@ void ShowPlayerPopulation::RenderSettings() {
                                         static_cast<int>(std::size(graph_total_pop_data->xs)));
                         }
 
+                        if (graph_total_in_game) {
+                                ImPlot::PlotLine(
+                                        "TOTAL IN A GAME",
+                                        graph_total_in_game_data->xs.data(),
+                                        graph_total_in_game_data->ys.data(),
+                                        static_cast<int>(std::size(graph_total_in_game_data->xs)));
+                        }
+
                         for (const auto & entry : graph_flags_selected) {
                                 if (!entry.second) {
                                         continue;
@@ -779,6 +804,8 @@ void ShowPlayerPopulation::RenderSettings() {
                         6,
                         ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
                 ImGui::Selectable("TOTAL POPULATION", &graph_total_pop);
+                ImGui::NextColumn();
+                ImGui::Selectable("TOTAL IN A GAME", &graph_total_in_game);
                 ImGui::EndColumns();
 
                 ImGui::SameLine();
@@ -793,11 +820,11 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::TextUnformatted("Click a category to see it graphed.");
 
                 ImGui::NextColumn();
-
-                ImGui::TextUnformatted(std::vformat(
-                                               "There are {} available data points.",
-                                               std::make_format_args(graph_total_pop_data->xs.size()))
-                                               .c_str());
+                std::string num_avail_points = std::vformat(
+                        "There are {} available data points.",
+                        std::make_format_args(graph_total_pop_data->xs.size()));
+                AlignForWidth(ImGui::CalcTextSize(num_avail_points.c_str()).x, 1.0f);
+                ImGui::TextUnformatted(num_avail_points.c_str());
                 ImGui::EndColumns();
 
                 ImGui::BeginColumns("graphselectables", 6, ImGuiColumnsFlags_NoResize);
@@ -1044,6 +1071,11 @@ ShowPlayerPopulation::token ShowPlayerPopulation::get_last_bank_entry() {
 void ShowPlayerPopulation::clear_graph_total_pop_data() {
         graph_total_pop_data->xs.clear();
         graph_total_pop_data->ys.clear();
+}
+
+void ShowPlayerPopulation::clear_graph_total_in_game_data() {
+        graph_total_in_game_data->xs.clear();
+        graph_total_in_game_data->ys.clear();
 }
 
 void ShowPlayerPopulation::clear_graph_data() {
@@ -1408,9 +1440,6 @@ void ShowPlayerPopulation::OnOpen() {
         ini_handler.ReadOpenFn = &ImGuiSettingsReadOpen;
         ini_handler.ReadLineFn = &ImGuiSettingsReadLine;
         ini_handler.WriteAllFn = &ImGuiSettingsWriteAll;
-
-        std::ofstream f {gameWrapper->GetDataFolder().string() + "kay.txt"};
-        f << std::vformat("{:X}", std::make_format_args(reinterpret_cast<uintptr_t>(plugin_ctx))) << std::endl;
 
         (plugin_ctx->SettingsHandlers).push_back(ini_handler);
 }
