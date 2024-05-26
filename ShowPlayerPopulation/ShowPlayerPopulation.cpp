@@ -18,7 +18,7 @@
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.0.0", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.1.0", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 /// <summary>
@@ -1168,7 +1168,7 @@ void ShowPlayerPopulation::Render() {
                 if (lock_overlay) {
                         flags |= ImGuiWindowFlags_NoInputs;
                 }
-                with_Window("Hey, cutie", NULL, flags) {
+                with_Window("Show Player Population", NULL, flags) {
                         set_StyleColor(ImGuiCol_Text, chosen_overlay_text_color);
                         ImGui::SetWindowFontScale(1.3f);
                         CenterImGuiText(std::vformat(
