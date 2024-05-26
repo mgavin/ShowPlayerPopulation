@@ -258,7 +258,7 @@ void ShowPlayerPopulation::init_graph_data() {
                 }
 
                 graph_total_in_game_data->xs.push_back(thenf);
-                graph_total_in_game_data->ys.push_back(total_in_game);
+                graph_total_in_game_data->ys.push_back(static_cast<float>(total_in_game));
 
                 has_graph_data = true;
         }
@@ -319,7 +319,7 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
         }
 
         graph_total_in_game_data->xs.push_back(timef);
-        graph_total_in_game_data->ys.push_back(total_in_game);
+        graph_total_in_game_data->ys.push_back(static_cast<float>(total_in_game));
 
         has_graph_data = true;
 }
@@ -758,7 +758,8 @@ void ShowPlayerPopulation::RenderSettings() {
                         0,
                         std::ranges::max(graph_total_pop_data->ys),
                         ImGuiCond_FirstUseEver);
-                // transform functions must be set before adding ImPlotAxisFlags_CustomFormat flag to an axis
+                // transform functions must be set before adding ImPlotAxisFlags_CustomFormat
+                // flag to an axis
                 ImPlot::GetStyle().x_label_tf = &graphed_data_t::xlabel_transform_func;
                 ImPlot::GetStyle().x_mouse_tf = &graphed_data_t::xval_mouse_func;
                 if (ImPlot::BeginPlot(
@@ -1006,7 +1007,8 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::Unindent(INDENT_OFFSET);
 
                 ImGui::TextWrapped(
-                        "The population data is saved when the plugin is unloaded or Rocket League is exited.");
+                        "The population data is saved when the plugin is unloaded or Rocket "
+                        "League is exited.");
 
                 ImGui::NewLine();
         }
@@ -1316,8 +1318,9 @@ void ShowPlayerPopulation::Render() {
                                                                 h_cols.colws[i] = ImGui::GetColumnWidth(i);
                                                                 h_cols.colos[i] = ImGui::GetColumnOffset(i);
 
-                                                                // called to get ImGui to call savehandlers when
-                                                                // it saves info itself
+                                                                // called to get ImGui to call
+                                                                // savehandlers when it saves
+                                                                // info itself
                                                                 ImGui::MarkIniSettingsDirty();
                                                         }
                                                 }
