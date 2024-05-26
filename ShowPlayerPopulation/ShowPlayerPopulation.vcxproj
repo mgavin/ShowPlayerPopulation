@@ -46,6 +46,8 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\matthew\source\repos\ShowPlayerPopulation\bakkesmodsdk\include\bakkesmod\imgui;C:\Users\matthew\source\repos\ShowPlayerPopulation\imgui_sugar;C:\Users\matthew\source\repos\ShowPlayerPopulation\bakkesmodsdk\include;C:\Users\matthew\source\repos\ShowPlayerPopulation\implot_bakkesmod;C:\Users\matthew\source\repos\ShowPlayerPopulation\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalOptions>
+      </AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

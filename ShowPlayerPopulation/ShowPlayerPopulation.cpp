@@ -25,6 +25,8 @@
  *  - Do other imgui stuff saved to imgui ini [3/10]
  *  - add hide titlebar [1/10]
  *
+ *  - ... I spent the last couple of days changing the format of the x axis -_-
+ *
  * OTHERS:
  *  - new project template with cmake [5/10]
  *  - Generate the RL SDK to see about window positions / playlist information. [7/10]
@@ -354,103 +356,6 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
                 graph_flags[playid] = true;
         }
         has_graph_data = true;
-}
-
-/// <summary>
-/// Holds the operations handled in the thread that massages the data.
-/// </summary>
-
-// I feel like a lot of checks are missing here.
-void ShowPlayerPopulation::massage_graph_data_operations(
-        bool &                                                  thread_busy,
-        bool &                                                  data_ready,
-        std::shared_ptr<graphed_data_t> &                       gtpd,
-        std::shared_ptr<std::map<PlaylistId, graphed_data_t>> & gd) {
-        using namespace std::chrono;
-        using namespace std::chrono_literals;
-
-        thread_busy = true;
-
-        zoned_seconds              now {current_zone(), time_point_cast<seconds>(system_clock::now())};
-        std::chrono::local_seconds tnow = now.get_local_time();
-
-        // release and destroy previously owned data
-        gtpd.reset();
-        gd.reset();
-
-        // copy new data to the temp holders
-        gtpd = std::make_shared<graphed_data_t>(*graph_total_pop_data);
-        gd   = std::make_shared<std::map<PlaylistId, graphed_data_t>>(*graph_data);
-
-        const token & t = get_last_bank_entry();
-
-        // update every time difference in the list...
-        // for (size_t i : std::ranges::views::iota(0, static_cast<int>(gtpd->t.size()))) {
-        //        gtpd->xs[i] = duration<float, minutes::period> {(gtpd->t[i].get_local_time() -
-        //        tnow)}.count();
-        //}
-
-        // for (const auto & entry : t.playlist_pop) {
-        //         PlaylistId playid = entry.first;
-        //         int        pop    = entry.second;
-        //         if (pop < DONT_SHOW_POP_BELOW_THRESHOLD) {
-        //                 continue;
-        //         }
-        //         for (size_t i : std::ranges::views::iota(0,
-        //         static_cast<int>((*gd)[playid].t.size()))) {
-        //                 (*gd)[playid].xs[i] =
-        //                         duration<float, minutes::period>
-        //                         {(*gd)[playid].t[i].get_local_time() - tnow}.count();
-        //         }
-        // }
-
-        data_ready  = true;
-        thread_busy = false;
-}
-
-/// <summary>
-/// Updates the entries in the graph data to have a consistent time offset from "now".
-/// </summary>
-void ShowPlayerPopulation::massage_graph_data() {
-        static bool thread_busy = false;
-        static bool data_ready  = false;
-
-        // temp data holders to do operations on
-        static std::shared_ptr<graphed_data_t>                       gtpdt;
-        static std::shared_ptr<std::map<PlaylistId, graphed_data_t>> gdt;
-
-        if (!data_header_is_open) {
-                return;
-        }
-
-        using namespace std::chrono;
-        using namespace std::chrono_literals;
-
-        zoned_seconds now {current_zone(), time_point_cast<seconds>(system_clock::now())};
-        // only be updatable every 15 seconds
-        if ((now.get_local_time() - last_massage_update.get_local_time() < GRAPH_DATA_MASSAGE_TIMEOUT) || thread_busy) {
-                return;
-        }
-
-        if (!data_ready) {
-                // do work elsewhere-- only one should be executing at a time.
-                // if gtpdt or gdt .use_count() is ever greater than 1, that's bad.
-                std::thread {
-                        &ShowPlayerPopulation::massage_graph_data_operations,
-                        this,
-                        std::ref(thread_busy),
-                        std::ref(data_ready),
-                        std::ref(gtpdt),
-                        std::ref(gdt)}
-                        .detach();
-        } else {
-                // swap in the temporaries
-                graph_total_pop_data.swap(gtpdt);
-                graph_data.swap(gdt);
-
-                data_ready          = false;
-                last_massage_update = now;
-        }
 }
 
 /// <summary>
@@ -895,25 +800,17 @@ void ShowPlayerPopulation::RenderSettings() {
         ImPlotLimits plot_limits;
         plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
         if (has_graph_data && (data_header_is_open = ImGui::CollapsingHeader("Data"))) {
-                // massage_graph_data();
-
-                float       width = 0.0f;
-                std::string when_updates_txt =
-                        std::vformat("The graph updates every {}", std::make_format_args(GRAPH_DATA_MASSAGE_TIMEOUT));
-                width += ImGui::CalcTextSize("Double-click on plot to re-orient data.").x;
-                width += 50.0f;
-                width += ImGui::CalcTextSize(
+                float width  = 0.0f;
+                width       += ImGui::CalcTextSize("Double-click on plot to re-orient data.").x;
+                width       += 50.0f;
+                width       += ImGui::CalcTextSize(
                                  "Double right-click on plot for options, such as to set "
-                                 "bounds.")
+                                       "bounds.")
                                  .x;
-                width += 50.0f;
-                width += ImGui::CalcTextSize(when_updates_txt.c_str()).x;
                 AlignForWidth(width);
                 ImGui::TextUnformatted("Double-click on plot to re-orient data.");
                 ImGui::SameLine(0.0f, 50.0f);
                 ImGui::TextUnformatted("Double right-click on plot for options, such as to set bounds.");
-                ImGui::SameLine(0.0f, 50.0f);
-                ImGui::TextUnformatted(when_updates_txt.c_str());
 
                 // this is more tightly coupled to implot, being that it understands here that
                 // these values will be used for the plot that ultimately serves a function

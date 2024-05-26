@@ -31,9 +31,8 @@ private:
         // and 10 ... because... to give an opportunity to
         // catch enough people in the custom training editor
 
-        static inline const std::string          CMD_PREFIX                 = "spp_";
-        static inline const std::chrono::seconds GRAPH_DATA_MASSAGE_TIMEOUT = std::chrono::seconds {15};
-        const std::filesystem::path              RECORD_POPULATION_FILE =
+        static inline const std::string CMD_PREFIX = "spp_";
+        const std::filesystem::path     RECORD_POPULATION_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
                 gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
@@ -92,7 +91,16 @@ private:
                                 std::chrono::current_zone(),
                                 std::chrono::sys_time {
                                         std::chrono::duration<float, std::chrono::seconds::period> {inp}}};
-                        return std::vformat("{0:%R%p}\n{0:%x}                             ", std::make_format_args(tp));
+                        int hours = std::chrono::hh_mm_ss(tp.get_local_time().time_since_epoch()).hours().count() % 12;
+                        // if hours != 0, hours, otw 12(because modulo)
+                        hours     = hours ? hours : 12;
+                        return std::vformat(
+                                "{2:s}{0:^9}\n{1:^10}",
+                                std::make_format_args(
+                                        /*                             */
+                                        std::vformat("{1:}:{0:%M%p}", std::make_format_args(tp, (hours ? hours : 12))),
+                                        std::vformat("{0:%x}", std::make_format_args(tp)),
+                                        hours < 10 ? " " : ""));
                 }
 
                 inline static std::string xval_mouse_func(float inp) {
@@ -100,17 +108,24 @@ private:
                                 std::chrono::current_zone(),
                                 std::chrono::sys_time {
                                         std::chrono::duration<float, std::chrono::seconds::period> {inp}}};
-                        return std::vformat("{0:%r}\n{0:%x}      ", std::make_format_args(tp));
+
+                        int hours = std::chrono::hh_mm_ss(tp.get_local_time().time_since_epoch()).hours().count() % 12;
+                        hours     = hours ? hours : 12;
+                        return std::vformat(
+                                "{2:s}{0:^11}\n{1:^12}",
+                                std::make_format_args(
+                                        std::vformat(" {0:%x}", std::make_format_args(tp)),
+                                        std::vformat("{1:}:{0:%M:%S%p}", std::make_format_args(tp, hours ? hours : 12)),
+                                        hours > 9 ? " " : ""));
                 }
         };
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
-        int                                                            TOTAL_IN_GAME_POP = 0;
-        std::chrono::zoned_seconds      last_massage_update {std::chrono::current_zone()};
-        bool                            has_graph_data       = false;
-        bool                            data_header_is_open  = false;
-        bool                            graph_total_pop      = true;
+        int                                                            TOTAL_IN_GAME_POP   = 0;
+        bool                                                           has_graph_data      = false;
+        bool                                                           data_header_is_open = false;
+        bool                                                           graph_total_pop     = true;
         std::shared_ptr<graphed_data_t> graph_total_pop_data = std::make_shared<graphed_data_t>();  // {times, xs, ys}
         std::shared_ptr<std::map<PlaylistId, graphed_data_t>> graph_data =
                 std::make_shared<std::map<PlaylistId, graphed_data_t>>();  // [PlaylistId] ->
@@ -190,12 +205,6 @@ private:
         // provided functionality
         void record_population();
         void add_last_entry_to_graph_data();
-        void massage_graph_data_operations(
-                bool &,
-                bool &,
-                std::shared_ptr<graphed_data_t> &,
-                std::shared_ptr<std::map<PlaylistId, graphed_data_t>> &);
-        void massage_graph_data();
         void prepare_data();
         void prune_data();
         void write_data_to_file();
