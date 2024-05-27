@@ -20,12 +20,8 @@
 
 /*
  * TODO: [Difficulty/10]
- *  - maybe make a release version dll with a powershell script based on ${BakkesModPath}
- * registry value. (lol) [2//10]
  *  - Do other imgui stuff saved to imgui ini [3/10]
  *  - add hide titlebar [1/10]
- *
- *  - ... I spent the last couple of days changing the format of the x axis -_-
  *
  * OTHERS:
  *  - new project template with cmake [5/10]
