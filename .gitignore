@@ -372,3 +372,4 @@ FodyWeavers.xsd
 *.zip
 
 clang-format-hooks/
+install_plugin_from_github.ps1
