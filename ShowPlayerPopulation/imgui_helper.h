@@ -13,7 +13,7 @@ struct PluginSettings {
         float vcolos[2] = {-1};  // vertical overlay offsets
 
         bool lock_overlay           = false;
-        bool show_overlay_title_bar = true;
+        bool hide_overlay_title_bar = false;
         bool lock_overlay_borders   = false;
         bool show_overlay_borders   = false;
 

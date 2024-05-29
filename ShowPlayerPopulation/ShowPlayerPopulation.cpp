@@ -674,7 +674,7 @@ void ShowPlayerPopulation::RenderSettings() {
         }
 
         ImGui::SameLine(0, 50.0f);
-        if (ImGui::Checkbox("Show title bar?", &settings.show_overlay_title_bar)) {
+        if (ImGui::Checkbox("Hide title bar?", &settings.hide_overlay_title_bar)) {
                 ImGui::MarkIniSettingsDirty();
         }
 
@@ -1298,7 +1298,7 @@ void ShowPlayerPopulation::Render() {
                 if (settings.lock_overlay) {
                         flags |= ImGuiWindowFlags_NoInputs;
                 }
-                if (!settings.show_overlay_title_bar) {
+                if (settings.hide_overlay_title_bar) {
                         flags |= ImGuiWindowFlags_NoTitleBar;
                 }
                 with_Window("Hey, cutie", NULL, flags) {
@@ -1311,8 +1311,9 @@ void ShowPlayerPopulation::Render() {
                         ImGui::NewLine();
                         set_StyleColor(ImGuiCol_ChildBg, settings.chosen_overlay_color);
 
-                        // The padding setting here is to remove the right side padding on the horizontal configuration
-                        // of the overlay. It didn't seem to affect the left side padding, which is cool.
+                        // The padding setting here is to remove the right side padding on the
+                        // horizontal configuration of the overlay. It didn't seem to affect the
+                        // left side padding, which is cool.
                         with_StyleVar(ImGuiStyleVar_WindowPadding, {-20, 0}) {
                                 with_Child(
                                         "popnumbers",
@@ -1623,8 +1624,8 @@ static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *
         if (sscanf(line, "lock_overlay=%d", &bval) == 1) {
                 settings->lock_overlay = bval;
         }
-        if (sscanf(line, "show_overlay_title_bar=%d", &bval) == 1) {
-                settings->show_overlay_title_bar = bval;
+        if (sscanf(line, "hide_overlay_title_bar=%d", &bval) == 1) {
+                settings->hide_overlay_title_bar = bval;
         }
         if (sscanf(line, "show_overlay_borders=%d", &bval) == 1) {
                 settings->show_overlay_borders = bval;
@@ -1667,7 +1668,7 @@ static void ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * han
 
         buf->appendf("lock_overlay=%d", settings.lock_overlay);
         buf->append("\n");
-        buf->appendf("show_overlay_title_bar=%d", settings.show_overlay_title_bar);
+        buf->appendf("hide_overlay_title_bar=%d", settings.hide_overlay_title_bar);
         buf->append("\n");
         buf->appendf("lock_overlay_borders=%d", settings.lock_overlay_borders);
         buf->append("\n");
