@@ -158,9 +158,6 @@
     <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_additions.h">
       <Filter>IMGUI</Filter>
     </ClInclude>
-    <ClInclude Include="imgui_helper.h">
-      <Filter>IMGUI</Filter>
-    </ClInclude>
     <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_impl_dx11.h">
       <Filter>IMGUI</Filter>
     </ClInclude>
@@ -190,6 +187,9 @@
     </ClInclude>
     <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h">
       <Filter>IMGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_helper.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

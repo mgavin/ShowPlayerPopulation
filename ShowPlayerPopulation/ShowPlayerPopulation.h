@@ -34,39 +34,56 @@ private:
 
         static inline const std::string CMD_PREFIX = "spp_";
         const std::filesystem::path     RECORD_POPULATION_FILE =
-                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
+                gameWrapper->GetDataFolder().append(
+                        "ShowPlayerPopulation\\RecordPopulationData.csv");
         const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
-                gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
+                gameWrapper->GetDataFolder().append(
+                        "ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
         const std::string                            DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
         const std::string                            DATETIME_PARSE_STR  = "%FT%T%z";
-        static inline const std::chrono::time_zone * tz                  = std::chrono::current_zone();
+        static inline const std::chrono::time_zone * tz = std::chrono::current_zone();
 
-        // flags for different points in the plugin
-        bool is_overlay_open       = false;
-        bool lock_overlay          = false;
-        bool show_overlay_header   = true;
-        bool show_overlay_borders  = false;
-        bool lock_overlay_columns  = false;
-        bool in_main_menu          = false;
-        bool in_playlist_menu      = false;
-        bool in_game_menu          = false;
+        // flags for plugin behavior
+        bool show_overlay          = true;
         bool show_in_main_menu     = false;
         bool show_in_playlist_menu = false;
         bool show_in_game_menu     = false;
-        bool DO_CHECK              = false;
+
+        bool DO_CHECK = false;
+
+        int  hours_to_keep = 24;
+        bool keep_indef    = false;
+
+        // flags for different points in the plugin
+        bool is_overlay_open  = false;
+        bool in_main_menu     = false;
+        bool in_playlist_menu = false;
+        bool in_game_menu     = false;
 
         // ImGui related variables
-        ImGuiContext * plugin_ctx;
-        ImFont *       overlay_font_18           = nullptr;
-        ImFont *       overlay_font_22           = nullptr;
-        ImVec4         chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
-        ImVec4         chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
-        ImColor        col_black                 = ImColor {
+        ImGuiContext * handler_ctx;
+        ImFont *       overlay_font_18 = nullptr;
+        ImFont *       overlay_font_22 = nullptr;
+        const ImColor  col_black       = ImColor {
                 ImVec4 {0.0f, 0.0f, 0.0f, 1.0f}
         };
-        ImColor col_white = ImColor {
+        const ImColor col_white = ImColor {
                 ImVec4 {1.0f, 1.0f, 1.0f, 1.0f}
         };
+
+        // ImGui settings variables/helpers
+        friend void *
+                    ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
+        friend void ImGuiSettingsReadLine(
+                ImGuiContext *,
+                ImGuiSettingsHandler *,
+                void *,
+                const char *);
+        friend void ImGuiSettingsWriteAll(
+                ImGuiContext *,
+                ImGuiSettingsHandler *,
+                ImGuiTextBuffer *);
+        static inline imgui_helper::PluginSettings settings = {};
 
         // miscellaneous helper data. graphing should go here.
         struct graphed_data_t {  // three pair
@@ -101,8 +118,13 @@ private:
 
                         strftime(toptemp, 10, "%M%p", tp);
                         strftime(bottemp, 10, "%d/%y", tp);
-                        snprintf(top, 10, "%d:%s", hours, toptemp);       // gets rid of leading 0
-                        snprintf(bot, 10, "%d/%s", tp->tm_mon, bottemp);  // gets rid of leading 0
+                        snprintf(top, 10, "%d:%s", hours, toptemp);  // gets rid of leading 0
+                        snprintf(
+                                bot,
+                                10,
+                                "%d/%s",
+                                tp->tm_mon,
+                                bottemp);  // gets rid of leading 0
                         return std::vformat("{:^9}\n{:^10}", std::make_format_args(top, bot));
                 }
 
@@ -119,8 +141,13 @@ private:
 
                         strftime(toptemp, 10, "%M%p", tp);
                         strftime(bottemp, 10, "%d/%y", tp);
-                        snprintf(top, 10, "%d:%s", hours, toptemp);       // gets rid of leading 0
-                        snprintf(bot, 10, "%d/%s", tp->tm_mon, bottemp);  // gets rid of leading 0
+                        snprintf(top, 10, "%d:%s", hours, toptemp);  // gets rid of leading 0
+                        snprintf(
+                                bot,
+                                10,
+                                "%d/%s",
+                                tp->tm_mon,
+                                bottemp);  // gets rid of leading 0
                         return std::vformat(
                                 "{:s}{:^11}\n{:^12}",
                                 std::make_format_args(hours > 9 ? " " : "", bot, top));
@@ -129,13 +156,16 @@ private:
         const std::vector<std::string> SHOWN_PLAYLIST_POPS =
                 {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
         std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
-        int                                                            TOTAL_IN_GAME_POP   = 0;
-        bool                                                           has_graph_data      = false;
-        bool                                                           data_header_is_open = false;
-        bool                                                           graph_total_pop     = true;
-        bool                                                           graph_total_in_game = true;
-        std::shared_ptr<graphed_data_t> graph_total_pop_data     = std::make_shared<graphed_data_t>();
-        std::shared_ptr<graphed_data_t> graph_total_in_game_data = std::make_shared<graphed_data_t>();
+        int                                                            TOTAL_IN_GAME_POP = 0;
+        bool                                                           has_graph_data = false;
+        bool data_header_is_open                                                      = false;
+        bool graph_total_pop                                                          = true;
+        bool graph_total_in_game                                                      = true;
+
+        std::shared_ptr<graphed_data_t> graph_total_pop_data =
+                std::make_shared<graphed_data_t>();
+        std::shared_ptr<graphed_data_t> graph_total_in_game_data =
+                std::make_shared<graphed_data_t>();
         std::shared_ptr<std::map<PlaylistId, graphed_data_t>> graph_data =
                 std::make_shared<std::map<PlaylistId, graphed_data_t>>();
 
@@ -155,16 +185,19 @@ private:
                 token & operator=(token &&) &      = default;
                 token(const token &)               = default;
                 token(token &&)                    = default;
-                token(std::chrono::zoned_seconds z, int tp, int tpo, std::map<PlaylistId, int> pp) :
+                token(std::chrono::zoned_seconds z,
+                      int                        tp,
+                      int                        tpo,
+                      std::map<PlaylistId, int>  pp) :
                         zt(std::move(z)),
                         total_pop(std::move(tp)),
                         total_players_online(std::move(tpo)),
                         playlist_pop(std::move(pp)) {}
 
                 std::chrono::zoned_seconds zt;
-                int                        total_pop            = 0;
-                int                        total_players_online = 0;  // I've never seen it be unequal to total_pop
-                std::map<PlaylistId, int>  playlist_pop;
+                int                        total_pop = 0;
+                int total_players_online = 0;  // I've never seen it be unequal to total_pop
+                std::map<PlaylistId, int> playlist_pop;
         };
 
         // a bank full of tokens
@@ -195,9 +228,10 @@ private:
         bool show_all;
 
         ImVec2 onepos, twopos, threepos, fourpos, fivepos, sixpos;
-        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos, slot6_init_pos;
-        void   SNAPSHOT_PLAYLIST_POSITIONS();
-        void   GET_DEFAULT_POP_NUMBER_PLACEMENTS();
+        ImVec2 slot1_init_pos, slot2_init_pos, slot3_init_pos, slot4_init_pos, slot5_init_pos,
+                slot6_init_pos;
+        void SNAPSHOT_PLAYLIST_POSITIONS();
+        void GET_DEFAULT_POP_NUMBER_PLACEMENTS();
 
         // these may end up going away
         bool showstats;
@@ -246,11 +280,6 @@ private:
                 std::function<void(std::vector<std::string>)> do_func,
                 std::string                                   desc,
                 unsigned char                                 PERMISSIONS);
-
-        friend void * ImGuiSettingsReadOpen(ImGuiContext * ctx, ImGuiSettingsHandler * handler, const char * name);
-        friend void   ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void * entry, const char * line);
-        friend void   ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * handler, ImGuiTextBuffer * buf);
-        static inline imgui_helper::OverlayHorizontalColumnsSettings h_cols = {{-1}};
 
 public:
         void onLoad() override;
