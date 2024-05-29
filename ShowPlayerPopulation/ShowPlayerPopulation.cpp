@@ -18,8 +18,12 @@
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.1.0", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.2.8", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
+
+void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
+void   ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *, const char *);
+void   ImGuiSettingsWriteAll(ImGuiContext *, ImGuiSettingsHandler *, ImGuiTextBuffer *);
 
 /// <summary>
 /// do the following when your plugin is loaded
@@ -36,6 +40,7 @@ void ShowPlayerPopulation::onLoad() {
         init_cvars();
         init_hooked_events();
         init_graph_data();
+        init_settings_handler();
 
         prepare_data();
         SET_WHICH_MENU_I_AM_IN();
@@ -90,6 +95,10 @@ void ShowPlayerPopulation::init_datafile() {
 
 /// <summary>
 /// This will house initialization code for all the cvars used for the plugin.
+///
+/// My personal philosophy would be:
+/// if it has to do with the plugin (as a variable a notifier) -> make it a cvar
+/// if it has to do with imgui -> save it in imgui's settings handler
 /// </summary>
 void ShowPlayerPopulation::init_cvars() {
         CVarWrapper show_overlay_cvar = cvarManager->registerCvar(
@@ -104,29 +113,6 @@ void ShowPlayerPopulation::init_cvars() {
                                 cvarManager->executeCommand("togglemenu ShowPlayerPopulation", false);
                         });
                 }
-        });
-
-        CVarWrapper lock_overlay_cv =
-                cvarManager->registerCvar(CMD_PREFIX + "flag_lock_overlay", "0", "Flag for locking the overlay", false);
-        lock_overlay_cv.addOnValueChanged(
-                [this](std::string old_value, CVarWrapper new_value) { lock_overlay = new_value.getBoolValue(); });
-
-        CVarWrapper lock_overlay_columns_cv = cvarManager->registerCvar(
-                CMD_PREFIX + "flag_lock_overlay_columns",
-                "0",
-                "Flag for locking the overlay's columns",
-                false);
-        lock_overlay_columns_cv.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
-                lock_overlay_columns = new_value.getBoolValue();
-        });
-
-        CVarWrapper show_overlay_borders_cv = cvarManager->registerCvar(
-                CMD_PREFIX + "flag_show_overlay_borders",
-                "0",
-                "Flag for showing the overlay's borders",
-                false);
-        show_overlay_borders_cv.addOnValueChanged([this](std::string old_value, CVarWrapper new_value) {
-                show_overlay_borders = new_value.getBoolValue();
         });
 
         CVarWrapper show_menu_cv = cvarManager->registerCvar(
@@ -262,6 +248,24 @@ void ShowPlayerPopulation::init_graph_data() {
 
                 has_graph_data = true;
         }
+}
+
+/// <summary>
+/// Adds a settings handler to ImGui for saving plugin data in the imgui.ini file
+/// https://github.com/ocornut/imgui/issues/7489
+/// So far is used for column widths.
+/// </summary>
+void ShowPlayerPopulation::init_settings_handler() {
+        handler_ctx = ImGui::GetCurrentContext();
+
+        ImGuiSettingsHandler ini_handler;
+        ini_handler.TypeName   = "ShowPlayerPopulation";
+        ini_handler.TypeHash   = ImHashStr("ShowPlayerPopulation");
+        ini_handler.ReadOpenFn = &ImGuiSettingsReadOpen;
+        ini_handler.ReadLineFn = &ImGuiSettingsReadLine;
+        ini_handler.WriteAllFn = &ImGuiSettingsWriteAll;
+
+        handler_ctx->SettingsHandlers.push_back(ini_handler);
 }
 
 /// <summary>
@@ -539,7 +543,7 @@ void ShowPlayerPopulation::RenderSettings() {
                                   | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB;
         bool open_popup1 = ImGui::Button("Choose color for the overlay background.");
         ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
-        open_popup1 |= ImGui::ColorButton("OverlayColor", chosen_overlay_color, cef);
+        open_popup1 |= ImGui::ColorButton("OverlayColor", settings.chosen_overlay_color, cef);
         if (open_popup1) {
                 ImGui::OpenPopup("overlaycolorpicker");
         }
@@ -548,14 +552,15 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::Separator();
                 ImGui::ColorPicker4(
                         "##picker",
-                        (float *)&chosen_overlay_color,
+                        (float *)&settings.chosen_overlay_color,
                         cef | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+                ImGui::MarkIniSettingsDirty();
         }
         ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x * 14);
 
         bool open_popup2 = ImGui::Button("Choose color for the text on the overlay.");
         ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
-        open_popup2 |= ImGui::ColorButton("OverlayTextColor", chosen_overlay_text_color, cef);
+        open_popup2 |= ImGui::ColorButton("OverlayTextColor", settings.chosen_overlay_text_color, cef);
         if (open_popup2) {
                 ImGui::OpenPopup("overlaytextcolorpicker");
         }
@@ -564,8 +569,9 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::Separator();
                 ImGui::ColorPicker4(
                         "##picker",
-                        (float *)&chosen_overlay_text_color,
+                        (float *)&settings.chosen_overlay_text_color,
                         cef | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+                ImGui::MarkIniSettingsDirty();
         }
 
         ImGui::Separator();
@@ -580,37 +586,31 @@ void ShowPlayerPopulation::RenderSettings() {
 
         ImGui::NewLine();
 
-        // Checkbox flags for different options
-        if (ImGui::Checkbox("Lock overlay?", &lock_overlay)) {
-                CVarWrapper cvw  = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay");
-                CVarWrapper cvwc = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay_columns");
-                cvw.setValue(lock_overlay);
-                if (!cvwc.getBoolValue()) {
-                        cvwc.setValue(lock_overlay);
-                }
+        // show in main menu, show in game, show in playlist menu | flags
+        if (ImGui::Checkbox("Lock overlay?", &settings.lock_overlay)) {
+                ImGui::MarkIniSettingsDirty();
         }
 
         ImGui::SameLine(0, 50.0f);
 
-        if (ImGui::Checkbox("Lock overlay columns?", &lock_overlay_columns)) {
-                CVarWrapper cvw  = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay");
-                CVarWrapper cvwc = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay_columns");
-                CVarWrapper cvwb = cvarManager->getCvar(CMD_PREFIX + "flag_show_overlay_borders");
-                cvwc.setValue(lock_overlay_columns | cvwb.getBoolValue());
-                if (cvw.getBoolValue()) {
-                        cvw.setValue(lock_overlay_columns);
-                }
+        if (ImGui::Checkbox("Lock overlay columns?", &settings.lock_overlay_borders)) {
+                settings.lock_overlay_borders |= settings.show_overlay_borders;
+                ImGui::MarkIniSettingsDirty();
         }
 
         ImGui::SameLine(0, 50.0f);
 
-        if (ImGui::Checkbox("Hide overlay column's borders?", &show_overlay_borders)) {
-                CVarWrapper cvw  = cvarManager->getCvar(CMD_PREFIX + "flag_show_overlay_borders");
-                CVarWrapper cvwc = cvarManager->getCvar(CMD_PREFIX + "flag_lock_overlay_columns");
-                cvw.setValue(show_overlay_borders);
-                if (!cvwc.getBoolValue()) {
-                        cvwc.setValue(show_overlay_borders);
+        if (ImGui::Checkbox("Hide overlay column's borders?", &settings.show_overlay_borders)) {
+                if (!settings.lock_overlay_borders) {
+                        settings.lock_overlay_borders = settings.show_overlay_borders;
                 }
+                ImGui::MarkIniSettingsDirty();
+        }
+
+        ImGui::SameLine(0, 50.0f);
+
+        if (ImGui::Checkbox("Hide title bar?", &settings.hide_overlay_title_bar)) {
+                ImGui::MarkIniSettingsDirty();
         }
 
         if (ImGui::Checkbox("Show in main menu?", &show_in_main_menu)) {
@@ -750,8 +750,6 @@ void ShowPlayerPopulation::RenderSettings() {
 
                 ImGui::TextUnformatted("Double right-click on plot for options, such as to set bounds.");
 
-                // this is more tightly coupled to implot, being that it understands here that
-                // these values will be used for the plot that ultimately serves a function
                 ImPlot::SetNextPlotLimits(
                         graph_total_pop_data->xs.front(),
                         graph_total_pop_data->xs.back(),
@@ -1131,8 +1129,7 @@ std::chrono::zoned_seconds ShowPlayerPopulation::get_timepoint_from_str(std::str
 /// </summary>
 /// <param name="ctx">AFAIK The pointer to the ImGui context</param>
 void ShowPlayerPopulation::SetImGuiContext(uintptr_t ctx) {
-        plugin_ctx = reinterpret_cast<ImGuiContext *>(ctx);
-        ImGui::SetCurrentContext(plugin_ctx);
+        ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext *>(ctx));
 }
 
 /// <summary>
@@ -1163,13 +1160,16 @@ void ShowPlayerPopulation::Render() {
             || (in_playlist_menu && show_in_playlist_menu)) {
                 ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x - 200, 225), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowPos(ImVec2(10, 2), ImGuiCond_FirstUseEver);
-                set_StyleColor(ImGuiCol_WindowBg, chosen_overlay_color);
+                set_StyleColor(ImGuiCol_WindowBg, settings.chosen_overlay_color);
                 ImGuiWindowFlags flags = ImGuiWindowFlags_None | ImGuiWindowFlags_NoCollapse;
-                if (lock_overlay) {
+                if (settings.lock_overlay) {
                         flags |= ImGuiWindowFlags_NoInputs;
                 }
+                if (settings.hide_overlay_title_bar) {
+                        flags |= ImGuiWindowFlags_NoTitleBar;
+                }
                 with_Window("Show Player Population", NULL, flags) {
-                        set_StyleColor(ImGuiCol_Text, chosen_overlay_text_color);
+                        set_StyleColor(ImGuiCol_Text, settings.chosen_overlay_text_color);
                         ImGui::SetWindowFontScale(1.3f);
                         CenterImGuiText(std::vformat(
                                                 "PLAYLIST POPULATIONS! LAST UPDATED: {0:%r} {0:%D}",
@@ -1178,8 +1178,10 @@ void ShowPlayerPopulation::Render() {
 
                         ImGui::NewLine();
 
-                        set_StyleColor(ImGuiCol_ChildBg, chosen_overlay_color);
-                        with_StyleVar(ImGuiStyleVar_WindowPadding, {20, 0}) {
+                        // The padding setting here is to remove the right side padding on the
+                        // horizontal configuration of the overlay. It didn't seem to affect the
+                        // left side padding, which is cool.
+                        with_StyleVar(ImGuiStyleVar_WindowPadding, {-20, 0}) {
                                 with_Child(
                                         "popnumbers",
                                         ImVec2 {0, 0},
@@ -1191,9 +1193,11 @@ void ShowPlayerPopulation::Render() {
                                                 ImGui::BeginColumns(
                                                         "populationnums_vert",
                                                         2,
-                                                        ((lock_overlay_columns) ? ImGuiColumnsFlags_NoResize : 0)
-                                                                | ((show_overlay_borders) ? ImGuiColumnsFlags_NoBorder
-                                                                                          : 0));
+                                                        ((settings.lock_overlay_borders) ? ImGuiColumnsFlags_NoResize
+                                                                                         : 0)
+                                                                | ((settings.show_overlay_borders)
+                                                                           ? ImGuiColumnsFlags_NoBorder
+                                                                           : 0));
                                                 ImGui::TextUnformatted("Total Players Online:");
                                                 AddUnderline(col_black);
 
@@ -1235,6 +1239,23 @@ void ShowPlayerPopulation::Render() {
 
                                                         ImGui::NextColumn();
                                                 }
+
+                                                static bool exec_once = true;
+                                                if (exec_once && settings.vcolws[0] >= 0.0f) {
+                                                        exec_once = !exec_once;  // turn off
+                                                        for (int i = 0; i < 2; ++i) {
+                                                                ImGui::SetColumnWidth(i, settings.vcolws[i]);
+                                                                ImGui::SetColumnOffset(i, settings.vcolos[i]);
+                                                        }
+                                                }
+                                                if (!settings.lock_overlay_borders) {
+                                                        for (int i = 0; i < 2; ++i) {
+                                                                settings.vcolws[i] = ImGui::GetColumnWidth(i);
+                                                                settings.vcolos[i] = ImGui::GetColumnOffset(i);
+                                                        }
+                                                        ImGui::MarkIniSettingsDirty();
+                                                }
+                                                // }
                                                 ImGui::EndColumns();
                                         } else {
                                                 // greater than half of the width of the screen
@@ -1269,9 +1290,11 @@ void ShowPlayerPopulation::Render() {
                                                 ImGui::BeginColumns(
                                                         "pop_nums_horiz",
                                                         12,
-                                                        ((lock_overlay_columns) ? ImGuiColumnsFlags_NoResize : 0)
-                                                                | ((show_overlay_borders) ? ImGuiColumnsFlags_NoBorder
-                                                                                          : 0));
+                                                        ((settings.lock_overlay_borders) ? ImGuiColumnsFlags_NoResize
+                                                                                         : 0)
+                                                                | ((settings.show_overlay_borders)
+                                                                           ? ImGuiColumnsFlags_NoBorder
+                                                                           : 0));
                                                 for (int line = 0; line < mxlines; ++line) {
                                                         for (const auto & playstr : SHOWN_PLAYLIST_POPS) {
                                                                 if (line >= population_data[playstr].size()) {
@@ -1304,26 +1327,22 @@ void ShowPlayerPopulation::Render() {
                                                         }
                                                 }
 
-                                                // every frame avoided with this call
                                                 static bool exec_once = true;
-                                                if (h_cols.colws[0] >= 0.0f && exec_once) {
+                                                if (exec_once && settings.hcolws[0] >= 0.0f) {
                                                         exec_once = !exec_once;  // turn off
                                                         for (int i = 0; i < 12; ++i) {
-                                                                ImGui::SetColumnWidth(i, h_cols.colws[i]);
-                                                                ImGui::SetColumnOffset(i, h_cols.colos[i]);
+                                                                ImGui::SetColumnWidth(i, settings.hcolws[i]);
+                                                                ImGui::SetColumnOffset(i, settings.hcolos[i]);
                                                         }
                                                 }
-                                                if (!lock_overlay_columns) {
+                                                if (!settings.lock_overlay_borders) {
                                                         for (int i = 0; i < 12; ++i) {
-                                                                h_cols.colws[i] = ImGui::GetColumnWidth(i);
-                                                                h_cols.colos[i] = ImGui::GetColumnOffset(i);
-
-                                                                // called to get ImGui to call
-                                                                // savehandlers when it saves
-                                                                // info itself
-                                                                ImGui::MarkIniSettingsDirty();
+                                                                settings.hcolws[i] = ImGui::GetColumnWidth(i);
+                                                                settings.hcolos[i] = ImGui::GetColumnOffset(i);
                                                         }
+                                                        ImGui::MarkIniSettingsDirty();
                                                 }
+                                                // }
                                                 ImGui::EndColumns();
                                         }
                                 }
@@ -1333,26 +1352,20 @@ void ShowPlayerPopulation::Render() {
 }
 
 // Settings Handlers that will mostly be copied code from ImGui internals
+// imgui.cpp@L9601
 static void * ImGuiSettingsReadOpen(ImGuiContext * ctx, ImGuiSettingsHandler * handler, const char * name) {
-        // really, only one entry should exist here. There's no  support for multiple
-        // instantiations
-
-        if (strcmp(name, "HorizontalColumnsData") != 0) {
-                // should never reach here
-                // throw std::exception {"somehow imgui setting but like, not"};
-        }
-        return reinterpret_cast<void *>(&ShowPlayerPopulation::h_cols);
+        return reinterpret_cast<void *>(&ShowPlayerPopulation::settings);
 }
 
 static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void * entry, const char * line) {
-        ShowPlayerPopulation::h_cols = *(imgui_helper::OverlayHorizontalColumnsSettings *)entry;
-        float w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12;
-        float o1, o2, o3, o4, o5, o6, o7, o8, o9, o10, o11, o12;
+        imgui_helper::PluginSettings * settings = (imgui_helper::PluginSettings *)entry;
+        float                          w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12;
+        float                          o1, o2, o3, o4, o5, o6, o7, o8, o9, o10, o11, o12;
+
+        // saved column widths for when the overlay is horizontal
         if (sscanf(line,
-                   "width1=%f,width2=%f,width3=%f,width4=%f,width5=%f,width6=%f,width7=%f,"
-                   "width8=%f,width9=%f,"
-                   "width10=%"
-                   "f,width11=%f,width12=%f",
+                   "hcolw1=%f,hcolw2=%f,hcolw3=%f,hcolw4=%f,hcolw5=%f,hcolw6=%f,"
+                   "hcolw7=%f,hcolw8=%f,hcolw9=%f,hcolw10=%f,hcolw11=%f,hcolw12=%f",
                    &w1,
                    &w2,
                    &w3,
@@ -1366,24 +1379,25 @@ static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *
                    &w11,
                    &w12)
             == 12) {
-                ShowPlayerPopulation::h_cols.colws[0]  = w1;
-                ShowPlayerPopulation::h_cols.colws[1]  = w2;
-                ShowPlayerPopulation::h_cols.colws[2]  = w3;
-                ShowPlayerPopulation::h_cols.colws[3]  = w4;
-                ShowPlayerPopulation::h_cols.colws[4]  = w5;
-                ShowPlayerPopulation::h_cols.colws[5]  = w6;
-                ShowPlayerPopulation::h_cols.colws[6]  = w7;
-                ShowPlayerPopulation::h_cols.colws[7]  = w8;
-                ShowPlayerPopulation::h_cols.colws[8]  = w9;
-                ShowPlayerPopulation::h_cols.colws[9]  = w10;
-                ShowPlayerPopulation::h_cols.colws[10] = w11;
-                ShowPlayerPopulation::h_cols.colws[11] = w12;
+                settings->hcolws[0]  = w1;
+                settings->hcolws[1]  = w2;
+                settings->hcolws[2]  = w3;
+                settings->hcolws[3]  = w4;
+                settings->hcolws[4]  = w5;
+                settings->hcolws[5]  = w6;
+                settings->hcolws[6]  = w7;
+                settings->hcolws[7]  = w8;
+                settings->hcolws[8]  = w9;
+                settings->hcolws[9]  = w10;
+                settings->hcolws[10] = w11;
+                settings->hcolws[11] = w12;
         }
+
+        // saved column offsets for when the overlay is horizontal
         if (sscanf(line,
-                   "offset1=%f,offset2=%f,offset3=%f,offset4=%f,offset5=%f,offset6=%f,offset7=%"
-                   "f,offset8=%f,"
-                   "offset9=%f,"
-                   "offset10=%f,offset11=%f,offset12=%f",
+                   "hcolo1=%f,hcolo2=%f,hcolo3=%f,hcolo4=%f,hcolo5=%f,hcolo6=%f,"
+                   "hcolo7=%f,hcolo8=%f,hcolo9=%f,hcolo10=%f,hcolo11=%f,"
+                   "hcolo12=%f",
                    &o1,
                    &o2,
                    &o3,
@@ -1397,37 +1411,88 @@ static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *
                    &o11,
                    &o12)
             == 12) {
-                ShowPlayerPopulation::h_cols.colos[0]  = o1;
-                ShowPlayerPopulation::h_cols.colos[1]  = o2;
-                ShowPlayerPopulation::h_cols.colos[2]  = o3;
-                ShowPlayerPopulation::h_cols.colos[3]  = o4;
-                ShowPlayerPopulation::h_cols.colos[4]  = o5;
-                ShowPlayerPopulation::h_cols.colos[5]  = o6;
-                ShowPlayerPopulation::h_cols.colos[6]  = o7;
-                ShowPlayerPopulation::h_cols.colos[7]  = o8;
-                ShowPlayerPopulation::h_cols.colos[8]  = o9;
-                ShowPlayerPopulation::h_cols.colos[9]  = o10;
-                ShowPlayerPopulation::h_cols.colos[10] = o11;
-                ShowPlayerPopulation::h_cols.colos[11] = o12;
+                settings->hcolos[0]  = o1;
+                settings->hcolos[1]  = o2;
+                settings->hcolos[2]  = o3;
+                settings->hcolos[3]  = o4;
+                settings->hcolos[4]  = o5;
+                settings->hcolos[5]  = o6;
+                settings->hcolos[6]  = o7;
+                settings->hcolos[7]  = o8;
+                settings->hcolos[8]  = o9;
+                settings->hcolos[9]  = o10;
+                settings->hcolos[10] = o11;
+                settings->hcolos[11] = o12;
+        }
+
+        int bval;
+        if (sscanf(line, "lock_overlay=%d", &bval) == 1) {
+                settings->lock_overlay = bval;
+        }
+        if (sscanf(line, "hide_overlay_title_bar=%d", &bval) == 1) {
+                settings->hide_overlay_title_bar = bval;
+        }
+        if (sscanf(line, "show_overlay_borders=%d", &bval) == 1) {
+                settings->show_overlay_borders = bval;
+        }
+        if (sscanf(line, "lock_overlay_borders=%d", &bval) == 1) {
+                settings->lock_overlay_borders = bval;
+        }
+
+        float colval1, colval2, colval3, colval4;
+        if (sscanf(line, "chosen_overlay_color={%f,%f,%f,%f}", &colval1, &colval2, &colval3, &colval4) == 4) {
+                settings->chosen_overlay_color = ImVec4 {colval1, colval2, colval3, colval4};
+        }
+
+        if (sscanf(line, "chosen_overlay_text_color={%f,%f,%f,%f}", &colval1, &colval2, &colval3, &colval4) == 4) {
+                settings->chosen_overlay_text_color = ImVec4 {colval1, colval2, colval3, colval4};
         }
 }
 
 static void ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * handler, ImGuiTextBuffer * buf) {
-        buf->reserve(buf->size() + sizeof(ShowPlayerPopulation::h_cols));
-        buf->appendf("[%s][%s]\n", handler->TypeName, "HorizontalColumnsData");
-        buf->appendf("width%d=%0.3f", 1, ShowPlayerPopulation::h_cols.colws[0]);
+        const imgui_helper::PluginSettings & settings = ShowPlayerPopulation::settings;
 
+        buf->reserve(buf->size() + sizeof(settings));
+        buf->appendf("[%s][%s]\n", handler->TypeName, "PluginSettings");
         // 12 is the number of horizontal columns represented in this data structure
+        buf->appendf("hcolw%d=%0.3f", 1, settings.hcolws[0]);
         for (int i = 1; i < 12; ++i) {
-                buf->appendf(",width%d=%0.3f", i + 1, ShowPlayerPopulation::h_cols.colws[i]);
+                buf->appendf(",hcolw%d=%0.3f", i + 1, settings.hcolws[i]);
         }
 
         buf->append("\n");
-        buf->appendf("offset%d=%0.3f", 1, ShowPlayerPopulation::h_cols.colos[0]);
-
+        buf->appendf("hcolo%d=%0.3f", 1, settings.hcolos[0]);
         for (int i = 1; i < 12; ++i) {
-                buf->appendf(",offset%d=%0.3f", i + 1, ShowPlayerPopulation::h_cols.colos[i]);
+                buf->appendf(",hcolo%d=%0.3f", i + 1, settings.hcolos[i]);
         }
+
+        buf->append("\n");
+        buf->appendf("vcolw1=%0.3f,vcolw2=%0.3f", settings.vcolws[0], settings.vcolws[1]);
+        buf->append("\n");
+        buf->appendf("vcolo1=%0.3f,vcolo2=%0.3f", settings.vcolos[0], settings.vcolos[1]);
+        buf->append("\n");
+
+        buf->appendf("lock_overlay=%d", settings.lock_overlay);
+        buf->append("\n");
+        buf->appendf("hide_overlay_title_bar=%d", settings.hide_overlay_title_bar);
+        buf->append("\n");
+        buf->appendf("lock_overlay_borders=%d", settings.lock_overlay_borders);
+        buf->append("\n");
+        buf->appendf("show_overlay_borders=%d", settings.show_overlay_borders);
+        buf->append("\n");
+        buf->appendf(
+                "chosen_overlay_color={%0.3f,%0.3f,%0.3f,%0.3f}",
+                settings.chosen_overlay_color.x,
+                settings.chosen_overlay_color.y,
+                settings.chosen_overlay_color.z,
+                settings.chosen_overlay_color.w);
+        buf->append("\n");
+        buf->appendf(
+                "chosen_overlay_text_color={%0.3f,%0.3f,%0.3f,%0.3f}",
+                settings.chosen_overlay_text_color.x,
+                settings.chosen_overlay_text_color.y,
+                settings.chosen_overlay_text_color.z,
+                settings.chosen_overlay_text_color.w);
         buf->append("\n");
 }
 
@@ -1436,15 +1501,6 @@ static void ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * han
 /// </summary>
 void ShowPlayerPopulation::OnOpen() {
         is_overlay_open = true;
-
-        ImGuiSettingsHandler ini_handler;
-        ini_handler.TypeName   = "ShowPlayerPopulation";
-        ini_handler.TypeHash   = ImHashStr("ShowPlayerPopulation");
-        ini_handler.ReadOpenFn = &ImGuiSettingsReadOpen;
-        ini_handler.ReadLineFn = &ImGuiSettingsReadLine;
-        ini_handler.WriteAllFn = &ImGuiSettingsWriteAll;
-
-        (plugin_ctx->SettingsHandlers).push_back(ini_handler);
 }
 
 /// <summary>
@@ -1452,13 +1508,6 @@ void ShowPlayerPopulation::OnOpen() {
 /// </summary>
 void ShowPlayerPopulation::OnClose() {
         is_overlay_open = false;
-
-        ImGuiSettingsHandler * igsh = ImGui::FindSettingsHandler("ShowPlayerPopulation");
-        if (igsh == nullptr) {
-                return;
-        }
-
-        (plugin_ctx->SettingsHandlers).erase(igsh);
 }
 
 /// <summary>
@@ -1501,14 +1550,22 @@ bool ShowPlayerPopulation::ShouldBlockInput() {
 /* -------------------------- END TOGGLEMENU CODE ----------------------------- */
 
 /// <summary>
-///  do the following when your plugin is unloaded
-///  destroy things
-///  dont throw here
+/// do the following when your plugin is unloaded
+/// destroy things
+/// dont throw here
 ///
-///  DONT DO ANYTHING HERE BECAUSE IT ISNT GUARANTEED (UNLESS YOU MANUALLY UNLOAD PLUGIN)
-///  SO IT'S JUST KIND OF FOR EASE OF DEVELOPMENT SINCE REBUILD = UNLOAD/LOAD
+/// DONT DO ANYTHING HERE IF YOU EXPECT IT TO BE GUARANTEED TO RUN
+/// BECAUSE IT ISNT GUARANTEED (UNLESS YOU MANUALLY UNLOAD PLUGIN)
+/// SO IT'S JUST KIND OF FOR EASE OF DEVELOPMENT SINCE REBUILD = UNLOAD/LOAD
 /// </summary>
 void ShowPlayerPopulation::onUnload() noexcept {
+        ImGuiSettingsHandler * igsh = ImGui::FindSettingsHandler("ShowPlayerPopulation");
+        if (igsh == nullptr) {
+                return;
+        }
+
+        handler_ctx->SettingsHandlers.erase(igsh);
+
         prune_data();
         write_data_to_file();
 }
