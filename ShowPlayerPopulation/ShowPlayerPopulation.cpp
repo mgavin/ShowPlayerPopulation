@@ -288,6 +288,7 @@ void ShowPlayerPopulation::init_graph_data() {
                 float thenf = duration_cast<seconds, float, seconds::period>(
                                       t.zt.get_sys_time().time_since_epoch())
                                       .count();
+
                 graph_total_pop_data->xs.push_back(thenf);
                 graph_total_pop_data->ys.push_back(static_cast<float>(t.total_pop));
 
@@ -371,7 +372,6 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
         float timef = duration_cast<seconds, float, seconds::period>(
                               t.zt.get_sys_time().time_since_epoch())
                               .count();
-
         graph_total_pop_data->xs.push_back(timef);
         graph_total_pop_data->ys.push_back(static_cast<float>(t.total_pop));
 
@@ -535,6 +535,7 @@ void ShowPlayerPopulation::print_bank_info() {
         // this is a member function because I want access to *this data
         LOG("NUM ENTRIES IN BANK: {}", bank.size());
         LOG("HOURS BETWEEN LAST AND FIRST: {:%H}",
+
             get_last_bank_entry().zt.get_local_time()
                     - get_first_bank_entry().zt.get_local_time());
 }
@@ -549,6 +550,7 @@ void ShowPlayerPopulation::print_graph_data() {
                         std::chrono::sys_time {
                                 std::chrono::duration<float, std::chrono::seconds::period> {
                                         xs[i]}}};
+
                 LOG("{} {} {}", tp, xs[i], ys[i]);
         }
 }
@@ -645,6 +647,7 @@ void ShowPlayerPopulation::RenderSettings() {
         ImGui::NewLine();
         ImGui::Separator();
         ImGui::Indent(80.0f);
+
         ImGuiColorEditFlags cef = ImGuiColorEditFlags_AlphaBar
                                   | ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_Float
                                   | ImGuiColorEditFlags_DisplayRGB;
@@ -866,6 +869,7 @@ void ShowPlayerPopulation::RenderSettings() {
                 AlignForWidth(width);
                 ImGui::TextUnformatted("Double-click on plot to re-orient data.");
                 ImGui::SameLine(0.0f, 50.0f);
+
                 ImGui::TextUnformatted(
                         "Double right-click on plot for options, such as to set bounds.");
 
@@ -1033,6 +1037,7 @@ void ShowPlayerPopulation::RenderSettings() {
                                 "{}",
                                 std::make_format_args(RECORD_POPULATION_FILE.generic_string()))
                                 .c_str());
+
                 ImGui::NewLine();
 
                 // Question 2
@@ -1085,6 +1090,7 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::Unindent(INDENT_OFFSET);
                 ImGui::TextWrapped(
                         "It's where you are when you're able to select different game modes.");
+
                 ImGui::NewLine();
 
                 // Question 7
