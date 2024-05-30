@@ -255,7 +255,7 @@ void ShowPlayerPopulation::init_hooked_events() {
                 [this](std::string eventName) {
                         SET_WHICH_MENU_I_AM_IN();
                         if (in_main_menu && DO_CHECK) {
-                                // roundabout way to try and avoid the "set playlist" error.
+                                // an attempt to find the best point at which to call this
                                 CHECK_NOW();
                                 DO_CHECK = false;
                         }
@@ -285,10 +285,10 @@ void ShowPlayerPopulation::init_graph_data() {
         clear_graph_flags();
 
         for (const token & t : bank) {
-                float thenf = duration_cast<seconds, float, seconds::period>(
-                                      t.zt.get_sys_time().time_since_epoch())
-                                      .count();
-
+                float thenf =
+                        duration<float, seconds::period> {
+                                t.zt.get_sys_time().time_since_epoch()}
+                                .count();
                 graph_total_pop_data->xs.push_back(thenf);
                 graph_total_pop_data->ys.push_back(static_cast<float>(t.total_pop));
 
@@ -308,7 +308,7 @@ void ShowPlayerPopulation::init_graph_data() {
                 }
 
                 graph_total_in_game_data->xs.push_back(thenf);
-                graph_total_in_game_data->ys.push_back(total_in_game);
+                graph_total_in_game_data->ys.push_back(static_cast<float>(total_in_game));
 
                 has_graph_data = true;
         }
@@ -369,9 +369,9 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
         using namespace std::chrono;
         using namespace std::chrono_literals;
 
-        float timef = duration_cast<seconds, float, seconds::period>(
-                              t.zt.get_sys_time().time_since_epoch())
+        float timef = duration<float, seconds::period> {t.zt.get_sys_time().time_since_epoch()}
                               .count();
+
         graph_total_pop_data->xs.push_back(timef);
         graph_total_pop_data->ys.push_back(static_cast<float>(t.total_pop));
 
@@ -391,7 +391,7 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
         }
 
         graph_total_in_game_data->xs.push_back(timef);
-        graph_total_in_game_data->ys.push_back(total_in_game);
+        graph_total_in_game_data->ys.push_back(static_cast<float>(total_in_game));
 
         has_graph_data = true;
 }
@@ -438,7 +438,6 @@ void ShowPlayerPopulation::prepare_data() {
 }
 
 /// <summary>
-/// Puts the data in a state that adheres to specifications
 /// Ensures that all recorded events fit within a certain timeframe.
 /// </summary>
 void ShowPlayerPopulation::prune_data() {
@@ -518,8 +517,8 @@ void ShowPlayerPopulation::CHECK_NOW() {
                 // from popping up -_-
 
                 // I'm so over this. Fuck it and fuck this broken API.
-                // mw.SetPlaylistSelection(Playlist::EXTRAS_SNOWDAY,
-                //                        true);
+                // mw.SetPlaylistSelection(Playlist::EXTRAS_SNOWDAY, true);
+
                 // there isn't an extras playlist anymore...
                 mw.StartMatchmaking(PlaylistCategory::EXTRAS);
                 mw.CancelMatchmaking();
@@ -607,9 +606,14 @@ static inline void TextURL(
         ImGui::PopStyleColor();
         if (ImGui::IsItemHovered()) {
                 if (ImGui::IsMouseClicked(0)) {
-                        const int nchar = std::strlen(URL_);
-                        wchar_t * URL   = new wchar_t[nchar + 1];
-                        MultiByteToWideChar(CP_UTF8, 0, URL_, nchar, URL, std::wcslen(URL));
+                        // What if the URL length is greater than int but less than size_t?
+                        // well then the program should crash, but this is fine.
+                        const int nchar = std::clamp(
+                                static_cast<int>(std::strlen(URL_)),
+                                0,
+                                std::numeric_limits<int>::max());
+                        wchar_t * URL = new wchar_t[nchar + 1];
+                        MultiByteToWideChar(CP_UTF8, 0, URL_, nchar, URL, nchar);
                         ShellExecuteW(NULL, L"open", URL, NULL, NULL, SW_SHOWNORMAL);
 
                         delete[] URL;
@@ -648,10 +652,10 @@ void ShowPlayerPopulation::RenderSettings() {
         ImGui::Separator();
         ImGui::Indent(80.0f);
 
+        // widgets for being able to choose the overlay's color settings
         ImGuiColorEditFlags cef = ImGuiColorEditFlags_AlphaBar
                                   | ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_Float
                                   | ImGuiColorEditFlags_DisplayRGB;
-
         bool open_popup1 = ImGui::Button("Choose color for the overlay background.");
         ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
         open_popup1 |= ImGui::ColorButton("OverlayColor", settings.chosen_overlay_color, cef);
@@ -692,6 +696,7 @@ void ShowPlayerPopulation::RenderSettings() {
         ImGui::Unindent(80.0f);
         ImGui::NewLine();
 
+        // Button for manually querying to check the population
         ImGui::SetCursorPosX(322.0f);
         if (ImGui::Button("CHECK POPULATION NOW")) {
                 gameWrapper->Execute([this](GameWrapper * gw) { CHECK_NOW(); });
@@ -705,12 +710,14 @@ void ShowPlayerPopulation::RenderSettings() {
         }
 
         ImGui::SameLine(0, 50.0f);
+
         if (ImGui::Checkbox("Lock overlay columns?", &settings.lock_overlay_borders)) {
                 settings.lock_overlay_borders |= settings.show_overlay_borders;
                 ImGui::MarkIniSettingsDirty();
         }
 
         ImGui::SameLine(0, 50.0f);
+
         if (ImGui::Checkbox("Hide overlay column's borders?", &settings.show_overlay_borders)) {
                 if (!settings.lock_overlay_borders) {
                         settings.lock_overlay_borders = settings.show_overlay_borders;
@@ -719,6 +726,7 @@ void ShowPlayerPopulation::RenderSettings() {
         }
 
         ImGui::SameLine(0, 50.0f);
+
         if (ImGui::Checkbox("Hide title bar?", &settings.hide_overlay_title_bar)) {
                 ImGui::MarkIniSettingsDirty();
         }
@@ -727,13 +735,17 @@ void ShowPlayerPopulation::RenderSettings() {
                 CVarWrapper cvw = cvarManager->getCvar(CMD_PREFIX + "flag_show_in_menu");
                 cvw.setValue(show_in_main_menu);
         }
+
         ImGui::SameLine(0, 50.0f);
+
         if (ImGui::Checkbox("Show in playlist menu?", &show_in_playlist_menu)) {
                 CVarWrapper cvw =
                         cvarManager->getCvar(CMD_PREFIX + "flag_show_in_playlist_menu");
                 cvw.setValue(show_in_playlist_menu);
         }
+
         ImGui::SameLine(0, 50.0f);
+
         if (ImGui::Checkbox("Show during pause menu in game?", &show_in_game_menu)) {
                 CVarWrapper cvw = cvarManager->getCvar(CMD_PREFIX + "flag_show_in_game_menu");
                 cvw.setValue(show_in_game_menu);
@@ -775,19 +787,25 @@ void ShowPlayerPopulation::RenderSettings() {
                 hours_kept % 24);
 
         ImGui::SameLine(100.0f, 200.0f);
+
         CVarWrapper keep_data_cvar = cvarManager->getCvar(CMD_PREFIX + "keep_indefinitely");
         bool        bkeep          = keep_data_cvar.getBoolValue();
         if (ImGui::Checkbox("KEEP DATA INDEFINITELY", &bkeep)) {
                 keep_data_cvar.setValue(bkeep);
         }
+
         if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
                 ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
                 ImGui::TextUnformatted("IF SET, DATA WILL");
+
                 ImGui::SameLine();
+
                 ImGui::TextUnformatted("NOT");
                 AddUnderline(col_white);
+
                 ImGui::SameLine();
+
                 ImGui::TextUnformatted("BE TRIMMED WHEN GAME EXITS");
                 ImGui::PopTextWrapPos();
                 ImGui::EndTooltip();
@@ -818,6 +836,8 @@ void ShowPlayerPopulation::RenderSettings() {
                         if (ImGui::Button("yes", ImVec2(80, 20))) {
                                 print_bank_info();
                                 prune_data();
+
+                                // update current and graph data structures with pruned data
                                 prepare_data();
                                 init_graph_data();
                                 ImGui::CloseCurrentPopup();
@@ -844,15 +864,22 @@ void ShowPlayerPopulation::RenderSettings() {
         }
 
         ImGui::NewLine();
+
         ImVec2 tmpts = ImGui::CalcTextSize(
                 "DISCLAIMER:  THE FOLLOWING GRAPHED DATA IS ONLY BASED ON VALUES THAT HAVE "
                 "BEEN SAVED LOCALLY.");
+
         AlignForWidth(tmpts.x);
+
         ImGui::TextUnformatted("DISCLAIMER:  THE FOLLOWING GRAPHED DATA IS");
+
         ImGui::SameLine();
+
         ImGui::TextUnformatted("ONLY");
         AddUnderline(col_white);
+
         ImGui::SameLine();
+
         ImGui::TextUnformatted("BASED ON VALUES THAT HAVE BEEN SAVED LOCALLY.");
 
         set_StyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.2f, 0.8f, 1.0f));
@@ -879,8 +906,8 @@ void ShowPlayerPopulation::RenderSettings() {
                         0,
                         std::ranges::max(graph_total_pop_data->ys),
                         ImGuiCond_FirstUseEver);
-                // this is more tightly coupled to implot, being that it understands here that
-                // these values will be used for the plot that ultimately serves a function
+                // transform functions must be set before adding ImPlotAxisFlags_CustomFormat
+                // flag to an axis
                 ImPlot::GetStyle().x_label_tf = &graphed_data_t::xlabel_transform_func;
                 ImPlot::GetStyle().x_mouse_tf = &graphed_data_t::xval_mouse_func;
                 if (ImPlot::BeginPlot(
@@ -921,7 +948,7 @@ void ShowPlayerPopulation::RenderSettings() {
                         }
                         ImPlot::EndPlot();
                 }
-                // Maybe a list with selectable elements
+                // A list of selectable elements to select what shows up in the graph
                 set_StyleColor(ImGuiCol_Header, ImVec4(0.19f, 0.85f, 0.12f, 0.7f));
                 ImGui::BeginColumns(
                         "graphselectables_total_pop",
@@ -931,14 +958,18 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::NextColumn();
                 ImGui::Selectable("TOTAL IN A GAME", &graph_total_in_game);
                 ImGui::EndColumns();
+
                 ImGui::SameLine();
+
                 ImGui::BeginColumns(
                         "graphselectables_help_text",
                         3,
                         ImGuiColumnsFlags_NoResize | ImGuiColumnsFlags_NoBorder);
 
                 ImGui::NextColumn();
+
                 ImGui::TextUnformatted("Click a category to see it graphed.");
+
                 ImGui::NextColumn();
                 std::string num_avail_points = std::vformat(
                         "There are {} available data points.",
@@ -1029,9 +1060,12 @@ void ShowPlayerPopulation::RenderSettings() {
 
                 // Question 1
                 ImGui::Indent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted("WHERE IS THE DATA SAVED?");
                 AddUnderline(col_white);
+
                 ImGui::Unindent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted(
                         std::vformat(
                                 "{}",
@@ -1042,18 +1076,25 @@ void ShowPlayerPopulation::RenderSettings() {
 
                 // Question 2
                 ImGui::Indent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted("WHAT IF I CRASH AND HAVE A PROBLEM?");
                 AddUnderline(col_white);
+
                 ImGui::Unindent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted("Raise an issue on the github page: ");
                 TextURL("HERE", "https://github.com/mgavin/ShowPlayerPopulation", true, false);
+
                 ImGui::NewLine();
 
                 // Question 3
                 ImGui::Indent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted("WHAT IS PRUNING?");
                 AddUnderline(col_white);
+
                 ImGui::Unindent(INDENT_OFFSET);
+
                 ImGui::TextWrapped(
                         "Pruning is the process where data is fitted within the timeframe "
                         "between now and the amount "
@@ -1061,32 +1102,42 @@ void ShowPlayerPopulation::RenderSettings() {
                         "irreversible from the in-game "
                         "menu. Make a backup save of data if you want backups.",
                         hours_kept);
+
                 ImGui::NewLine();
 
                 // Question 4
                 ImGui::Indent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted("WHAT IS 'KEEP INDEFINITELY?'");
                 AddUnderline(col_white);
+
                 ImGui::Unindent(INDENT_OFFSET);
+
                 ImGui::TextWrapped(
                         "This simply stops the plugin from pruning/trimming the data when the "
                         "plugin is unloaded or "
                         "the game is exited.");
+
                 ImGui::NewLine();
 
                 // Question 5
                 ImGui::Indent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted("WHAT IS THE MAIN MENU?");
                 AddUnderline(col_white);
+
                 ImGui::Unindent(INDENT_OFFSET);
                 ImGui::TextWrapped(
                         "It's where you are when you're able to select the [Play] button.");
+
                 ImGui::NewLine();
 
                 // Question 6
                 ImGui::Indent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted("WHAT IS THE PLAYLIST MENU?");
                 AddUnderline(col_white);
+
                 ImGui::Unindent(INDENT_OFFSET);
                 ImGui::TextWrapped(
                         "It's where you are when you're able to select different game modes.");
@@ -1095,22 +1146,30 @@ void ShowPlayerPopulation::RenderSettings() {
 
                 // Question 7
                 ImGui::Indent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted("WHAT IS THE PAUSE MENU IN GAME?");
                 AddUnderline(col_white);
+
                 ImGui::Unindent(INDENT_OFFSET);
+
                 ImGui::TextWrapped(
                         "It's where you are when you are in a game and are able to select "
                         "[Exit to Main Menu]");
+
                 ImGui::NewLine();
 
                 // Question 8
                 ImGui::Indent(INDENT_OFFSET);
+
                 ImGui::TextUnformatted("WHEN IS THE POPULATION INFORMATION SAVED?");
                 AddUnderline(col_white);
+
                 ImGui::Unindent(INDENT_OFFSET);
+
                 ImGui::TextWrapped(
-                        "When the plugin is unloaded or Rocket League is exited, the "
-                        "population data is saved.");
+                        "The population data is saved when the plugin is unloaded or Rocket "
+                        "League is exited.");
+
                 ImGui::NewLine();
         }
 }
@@ -1379,7 +1438,7 @@ void ShowPlayerPopulation::Render() {
                 if (settings.hide_overlay_title_bar) {
                         flags |= ImGuiWindowFlags_NoTitleBar;
                 }
-                with_Window("Hey, cutie", NULL, flags) {
+                with_Window("Show Player Population-DEV", NULL, flags) {
                         set_StyleColor(ImGuiCol_Text, settings.chosen_overlay_text_color);
                         ImGui::SetWindowFontScale(1.3f);
                         CenterImGuiText(
@@ -1387,6 +1446,7 @@ void ShowPlayerPopulation::Render() {
                                         "PLAYLIST POPULATIONS! LAST UPDATED: {0:%r} {0:%D}",
                                         std::make_format_args(get_last_bank_entry().zt))
                                         .c_str());
+
                         ImGui::NewLine();
                         set_StyleColor(ImGuiCol_ChildBg, settings.chosen_overlay_color);
 
@@ -1816,6 +1876,7 @@ static void ImGuiSettingsWriteAll(
         for (int i = 1; i < 12; ++i) {
                 buf->appendf(",hcolw%d=%0.3f", i + 1, settings.hcolws[i]);
         }
+
         buf->append("\n");
         buf->appendf("hcolo%d=%0.3f", 1, settings.hcolos[0]);
         for (int i = 1; i < 12; ++i) {
