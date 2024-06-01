@@ -860,7 +860,7 @@ void ShowPlayerPopulation::RenderSettings() {
                 } else if (minutes_gap >= 1440) {
                         snprintf(buf, 64, "%0.1f days(s)", minutes_gap * 1.0f / 1440.0f);
                 }
-                ImGui::SliderInt("Acceptable segmented gap", &minutes_gap, 10, 1440, buf);
+                ImGui::SliderInt("Acceptable segmented gap", &minutes_gap, 10, 5760, buf);
 
                 ImPlot::SetNextPlotLimits(
                         graph_total_pop_data->xs.front(),
@@ -878,8 +878,7 @@ void ShowPlayerPopulation::RenderSettings() {
                             "time",
                             "pop",
                             ImVec2(-1, 350),
-                            ImPlotFlags_MousePos | ImPlotFlags_Legend | ImPlotFlags_Highlight | ImPlotFlags_BoxSelect
-                                    | ImPlotFlags_ContextMenu | ImPlotFlags_CullData | ImPlotFlags_AntiAliased,
+                            ImPlotFlags_Default | ImPlotFlags_AntiAliased,
                             ImPlotAxisFlags_Default | ImPlotAxisFlags_CustomFormat | ImPlotAxisFlags_SkipGap,
                             ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMin)) {
                         if (graph_total_pop) {
