@@ -6,10 +6,8 @@
 
 namespace imgui_helper {
 struct PluginSettings {
-        float hcolws[12] = {-1};  // horizontal overlay widths
         float hcolos[12] = {-1};  // horizontal overlay offsets
 
-        float vcolws[2] = {-1};  // vertical overlay widths
         float vcolos[2] = {-1};  // vertical overlay offsets
 
         bool lock_overlay           = false;
