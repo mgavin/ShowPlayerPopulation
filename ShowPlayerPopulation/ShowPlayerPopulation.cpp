@@ -18,7 +18,8 @@
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.2.10", /*UNUSED*/ NULL);
+
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.2.11", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
@@ -1315,19 +1316,17 @@ void ShowPlayerPopulation::Render() {
                                                 }
 
                                                 static bool exec_once = true;
-                                                if (exec_once && settings.vcolos[1] >= 0.0f) {
+                                                if (exec_once) {
                                                         exec_once = !exec_once;  // turn off
-                                                        for (int i = 0; i < 2; ++i) {
-                                                                ImGui::SetColumnOffset(
-                                                                        i,
-                                                                        settings.vcolos[i]);
+                                                        if (settings.vcolos[0] >= 0.0f) {
+                                                                for (int i = 0; i < 2; ++i) {
+                                                                        ImGui::SetColumnOffset(i, settings.vcolos[i]);
+                                                                }
                                                         }
                                                 }
                                                 if (!settings.lock_overlay_borders) {
                                                         for (int i = 0; i < 2; ++i) {
-                                                                settings.vcolos[i] =
-                                                                        ImGui::GetColumnOffset(
-                                                                                i);
+                                                                settings.vcolos[i] = ImGui::GetColumnOffset(i);
                                                         }
                                                         ImGui::MarkIniSettingsDirty();
                                                 }
@@ -1420,19 +1419,17 @@ void ShowPlayerPopulation::Render() {
                                                 }
 
                                                 static bool exec_once = true;
-                                                if (exec_once && settings.hcolos[11] >= 0.0f) {
+                                                if (exec_once) {
                                                         exec_once = !exec_once;  // turn off
-                                                        for (int i = 0; i < 12; ++i) {
-                                                                ImGui::SetColumnOffset(
-                                                                        i,
-                                                                        settings.hcolos[i]);
+                                                        if (settings.hcolos[0] >= 0.0f) {
+                                                                for (int i = 0; i < 12; ++i) {
+                                                                        ImGui::SetColumnOffset(i, settings.hcolos[i]);
+                                                                }
                                                         }
                                                 }
                                                 if (!settings.lock_overlay_borders) {
                                                         for (int i = 0; i < 12; ++i) {
-                                                                settings.hcolos[i] =
-                                                                        ImGui::GetColumnOffset(
-                                                                                i);
+                                                                settings.hcolos[i] = ImGui::GetColumnOffset(i);
                                                         }
                                                         ImGui::MarkIniSettingsDirty();
                                                 }
