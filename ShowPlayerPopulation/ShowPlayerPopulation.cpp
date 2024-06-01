@@ -1,23 +1,3 @@
-#include <Windows.h>
-
-#include <shellapi.h>
-#include <stringapiset.h>
-#include <winnls.h>
-#include "ShowPlayerPopulation.h"
-
-#include <format>
-#include <fstream>
-#include <functional>
-#include <ranges>
-#include <thread>
-
-#include "csv.hpp"
-#include "implot.h"
-
-#include "HookedEvents.h"
-#include "internal/csv_row.hpp"
-#include "Logger.h"
-
 /*
  * TODO: [Difficulty/10]
  *  - something else I forgot because that's how it works these days.
@@ -42,7 +22,27 @@
  *
  **/
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.2.11", /*UNUSED*/ NULL);
+#include <Windows.h>
+
+#include <shellapi.h>
+#include <stringapiset.h>
+#include <winnls.h>
+#include "ShowPlayerPopulation.h"
+
+#include <format>
+#include <fstream>
+#include <functional>
+#include <ranges>
+#include <thread>
+
+#include "csv.hpp"
+#include "implot.h"
+
+#include "HookedEvents.h"
+#include "internal/csv_row.hpp"
+#include "Logger.h"
+
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.0", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
