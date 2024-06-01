@@ -18,7 +18,7 @@
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.2.9", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.2.10", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
@@ -276,7 +276,6 @@ void ShowPlayerPopulation::init_graph_data() {
 /// <summary>
 /// Adds a settings handler to ImGui for saving plugin data in the imgui.ini file
 /// https://github.com/ocornut/imgui/issues/7489
-/// So far is used for column widths.
 /// </summary>
 void ShowPlayerPopulation::init_settings_handler() {
         handler_ctx = ImGui::GetCurrentContext();
@@ -1240,10 +1239,7 @@ void ShowPlayerPopulation::Render() {
                         ImGui::NewLine();
 
                         set_StyleColor(ImGuiCol_ChildBg, settings.chosen_overlay_color);
-                        // The padding setting here is to remove the right side padding on the
-                        // horizontal configuration of the overlay. It didn't seem to affect the
-                        // left side padding, which is cool.
-                        with_StyleVar(ImGuiStyleVar_WindowPadding, {-20, 0}) {
+                        with_StyleVar(ImGuiStyleVar_WindowPadding, {20, 0}) {
                                 with_Child(
                                         "popnumbers",
                                         ImVec2 {0, 0},
@@ -1319,12 +1315,9 @@ void ShowPlayerPopulation::Render() {
                                                 }
 
                                                 static bool exec_once = true;
-                                                if (exec_once && settings.vcolws[0] >= 0.0f) {
+                                                if (exec_once && settings.vcolos[1] >= 0.0f) {
                                                         exec_once = !exec_once;  // turn off
                                                         for (int i = 0; i < 2; ++i) {
-                                                                ImGui::SetColumnWidth(
-                                                                        i,
-                                                                        settings.vcolws[i]);
                                                                 ImGui::SetColumnOffset(
                                                                         i,
                                                                         settings.vcolos[i]);
@@ -1332,9 +1325,6 @@ void ShowPlayerPopulation::Render() {
                                                 }
                                                 if (!settings.lock_overlay_borders) {
                                                         for (int i = 0; i < 2; ++i) {
-                                                                settings.vcolws[i] =
-                                                                        ImGui::GetColumnWidth(
-                                                                                i);
                                                                 settings.vcolos[i] =
                                                                         ImGui::GetColumnOffset(
                                                                                 i);
@@ -1430,12 +1420,9 @@ void ShowPlayerPopulation::Render() {
                                                 }
 
                                                 static bool exec_once = true;
-                                                if (exec_once && settings.hcolws[0] >= 0.0f) {
+                                                if (exec_once && settings.hcolos[11] >= 0.0f) {
                                                         exec_once = !exec_once;  // turn off
                                                         for (int i = 0; i < 12; ++i) {
-                                                                ImGui::SetColumnWidth(
-                                                                        i,
-                                                                        settings.hcolws[i]);
                                                                 ImGui::SetColumnOffset(
                                                                         i,
                                                                         settings.hcolos[i]);
@@ -1443,9 +1430,6 @@ void ShowPlayerPopulation::Render() {
                                                 }
                                                 if (!settings.lock_overlay_borders) {
                                                         for (int i = 0; i < 12; ++i) {
-                                                                settings.hcolws[i] =
-                                                                        ImGui::GetColumnWidth(
-                                                                                i);
                                                                 settings.hcolos[i] =
                                                                         ImGui::GetColumnOffset(
                                                                                 i);
@@ -1477,39 +1461,7 @@ static void ImGuiSettingsReadLine(
         void *       entry,
         const char * line) {
         imgui_helper::PluginSettings * settings = (imgui_helper::PluginSettings *)entry;
-        float                          w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12;
         float                          o1, o2, o3, o4, o5, o6, o7, o8, o9, o10, o11, o12;
-
-        // saved column widths for when the overlay is horizontal
-        if (sscanf(line,
-                   "hcolw1=%f,hcolw2=%f,hcolw3=%f,hcolw4=%f,hcolw5=%f,hcolw6=%f,"
-                   "hcolw7=%f,hcolw8=%f,hcolw9=%f,hcolw10=%f,hcolw11=%f,hcolw12=%f",
-                   &w1,
-                   &w2,
-                   &w3,
-                   &w4,
-                   &w5,
-                   &w6,
-                   &w7,
-                   &w8,
-                   &w9,
-                   &w10,
-                   &w11,
-                   &w12)
-            == 12) {
-                settings->hcolws[0]  = w1;
-                settings->hcolws[1]  = w2;
-                settings->hcolws[2]  = w3;
-                settings->hcolws[3]  = w4;
-                settings->hcolws[4]  = w5;
-                settings->hcolws[5]  = w6;
-                settings->hcolws[6]  = w7;
-                settings->hcolws[7]  = w8;
-                settings->hcolws[8]  = w9;
-                settings->hcolws[9]  = w10;
-                settings->hcolws[10] = w11;
-                settings->hcolws[11] = w12;
-        }
 
         // saved column offsets for when the overlay is horizontal
         if (sscanf(line,
@@ -1589,19 +1541,11 @@ static void ImGuiSettingsWriteAll(
         buf->reserve(buf->size() + sizeof(settings));
         buf->appendf("[%s][%s]\n", handler->TypeName, "PluginSettings");
         // 12 is the number of horizontal columns represented in this data structure
-        buf->appendf("hcolw%d=%0.3f", 1, settings.hcolws[0]);
-        for (int i = 1; i < 12; ++i) {
-                buf->appendf(",hcolw%d=%0.3f", i + 1, settings.hcolws[i]);
-        }
-
-        buf->append("\n");
         buf->appendf("hcolo%d=%0.3f", 1, settings.hcolos[0]);
         for (int i = 1; i < 12; ++i) {
                 buf->appendf(",hcolo%d=%0.3f", i + 1, settings.hcolos[i]);
         }
 
-        buf->append("\n");
-        buf->appendf("vcolw1=%0.3f,vcolw2=%0.3f", settings.vcolws[0], settings.vcolws[1]);
         buf->append("\n");
         buf->appendf("vcolo1=%0.3f,vcolo2=%0.3f", settings.vcolos[0], settings.vcolos[1]);
         buf->append("\n");
