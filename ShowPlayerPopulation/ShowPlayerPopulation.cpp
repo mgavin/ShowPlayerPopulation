@@ -834,18 +834,33 @@ void ShowPlayerPopulation::RenderSettings() {
         // ImPlotLimits plot_limits;
         // plot_limits.X.Min = plot_limits.X.Max = plot_limits.Y.Min = plot_limits.Y.Max = 0;
         if (has_graph_data && (data_header_is_open = ImGui::CollapsingHeader("Data"))) {
-                float width  = 0.0f;
-                width       += ImGui::CalcTextSize("Double-click on plot to re-orient data.").x;
-                width       += 50.0f;
-                width       += ImGui::CalcTextSize(
-                                 "Double right-click on plot for options, such as to set "
-                                       "bounds.")
-                                 .x;
+                const char * txt1   = "Double-click on plot to re-orient data.";
+                const char * txt2   = "Double right-click on plot for options, such as to set bounds.";
+                float        width  = 0.0f;
+                width              += ImGui::CalcTextSize(txt1).x;
+                width              += 50.0f;
+                width              += ImGui::CalcTextSize(txt2).x;
+                width              += 50.0f;  // for the slider
+                width              += 250.0f;
                 AlignForWidth(width);
-                ImGui::TextUnformatted("Double-click on plot to re-orient data.");
+                ImGui::TextUnformatted(txt1);
                 ImGui::SameLine(0.0f, 50.0f);
 
-                ImGui::TextUnformatted("Double right-click on plot for options, such as to set bounds.");
+                ImGui::TextUnformatted(txt2);
+
+                ImGui::SameLine(0.0f, 50.0f);
+                // ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+                ImGui::SetNextItemWidth(200.0f);
+                static int  minutes_gap = 600;
+                static char buf[64]     = {0};
+                if (minutes_gap < 60) {
+                        snprintf(buf, 64, "%d minutes", minutes_gap);
+                } else if (minutes_gap >= 60 && minutes_gap < 1440) {
+                        snprintf(buf, 64, "%0.1f hour(s)", minutes_gap * 1.0f / 60.0f);
+                } else if (minutes_gap >= 1440) {
+                        snprintf(buf, 64, "%0.1f days(s)", minutes_gap * 1.0f / 1440.0f);
+                }
+                ImGui::SliderInt("Acceptable segmented gap", &minutes_gap, 10, 1440, buf);
 
                 ImPlot::SetNextPlotLimits(
                         graph_total_pop_data->xs.front(),
@@ -857,13 +872,14 @@ void ShowPlayerPopulation::RenderSettings() {
                 // flag to an axis
                 ImPlot::GetStyle().x_label_tf    = &graphed_data_t::xlabel_transform_func;
                 ImPlot::GetStyle().x_mouse_tf    = &graphed_data_t::xval_mouse_func;
-                ImPlot::GetStyle().x_skip_gap_sz = duration_cast<seconds>(30min).count();
+                ImPlot::GetStyle().x_skip_gap_sz = duration_cast<seconds>(minutes {minutes_gap}).count();
                 if (ImPlot::BeginPlot(
                             "Population Numbers over Time",
                             "time",
                             "pop",
                             ImVec2(-1, 350),
-                            ImPlotFlags_Default | ImPlotFlags_AntiAliased,
+                            ImPlotFlags_MousePos | ImPlotFlags_Legend | ImPlotFlags_Highlight | ImPlotFlags_BoxSelect
+                                    | ImPlotFlags_ContextMenu | ImPlotFlags_CullData | ImPlotFlags_AntiAliased,
                             ImPlotAxisFlags_Default | ImPlotAxisFlags_CustomFormat | ImPlotAxisFlags_SkipGap,
                             ImPlotAxisFlags_Default | ImPlotAxisFlags_LockMin)) {
                         if (graph_total_pop) {
