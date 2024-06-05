@@ -22,12 +22,13 @@
  *
  **/
 
+#include "ShowPlayerPopulation.h"
+
 #include <Windows.h>
 
 #include <shellapi.h>
 #include <stringapiset.h>
 #include <winnls.h>
-#include "ShowPlayerPopulation.h"
 
 #include <format>
 #include <fstream>
@@ -315,13 +316,18 @@ void ShowPlayerPopulation::record_population() {
         using namespace std::chrono;
 
         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
-
         if (mw) {
                 token entry;
                 entry.total_pop            = mw.GetTotalPopulation();
                 entry.total_players_online = mw.GetTotalPlayersOnline();
                 for (const auto & element : bm_helper::playlist_ids_str) {
                         entry.playlist_pop[element.first] = mw.GetPlayerCount(static_cast<PlaylistIds>(element.first));
+                        if (entry.playlist_pop[element.first] == -1) {
+                                // NO MATCHING PLAYLIST FOUND
+                                LOG("PLAYLIST MISSING#: {} . NAME_STRING: {}",
+                                    static_cast<int>(element.first),
+                                    element.second);
+                        }
                 }
                 entry.zt = zoned_seconds {current_zone(), time_point_cast<seconds>(system_clock::now())};
                 bank.push_back(std::move(entry));
@@ -487,8 +493,10 @@ void ShowPlayerPopulation::CHECK_NOW() {
                 // mw.SetPlaylistSelection(Playlist::EXTRAS_SNOWDAY, true);
 
                 // there isn't an extras playlist anymore...
-                mw.StartMatchmaking(PlaylistCategory::EXTRAS);
-                mw.CancelMatchmaking();
+                // mw.StartMatchmaking(PlaylistCategory::EXTRAS);
+                // mw.CancelMatchmaking();
+                cvarManager->executeCommand("queue", false);  // lovely -_-
+                cvarManager->executeCommand("queue_cancel", false);
         }
 }
 
@@ -569,8 +577,9 @@ static inline void TextURL(const char * name_, const char * URL_, uint8_t SameLi
                         // What if the URL length is greater than int but less than size_t?
                         // well then the program should crash, but this is fine.
                         const int nchar =
-                                std::clamp(static_cast<int>(std::strlen(URL_)), 0, std::numeric_limits<int>::max());
+                                std::clamp(static_cast<int>(std::strlen(URL_)), 0, std::numeric_limits<int>::max() - 1);
                         wchar_t * URL = new wchar_t[nchar + 1];
+                        wmemset(URL, 0, nchar + 1);
                         MultiByteToWideChar(CP_UTF8, 0, URL_, nchar, URL, nchar);
                         ShellExecuteW(NULL, L"open", URL, NULL, NULL, SW_SHOWNORMAL);
 
@@ -849,18 +858,19 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::TextUnformatted(txt2);
 
                 ImGui::SameLine(0.0f, 50.0f);
-                // ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+
                 ImGui::SetNextItemWidth(200.0f);
-                static int  minutes_gap = 600;
-                static char buf[64]     = {0};
-                if (minutes_gap < 60) {
-                        snprintf(buf, 64, "%d minutes", minutes_gap);
-                } else if (minutes_gap >= 60 && minutes_gap < 1440) {
-                        snprintf(buf, 64, "%0.1f hour(s)", minutes_gap * 1.0f / 60.0f);
-                } else if (minutes_gap >= 1440) {
-                        snprintf(buf, 64, "%0.1f days(s)", minutes_gap * 1.0f / 1440.0f);
+                static char buf[64] = {0};
+                if (settings.skip_gap_size < 60) {
+                        snprintf(buf, 64, "%d minutes", settings.skip_gap_size);
+                } else if (settings.skip_gap_size >= 60 && settings.skip_gap_size < 1440) {
+                        snprintf(buf, 64, "%0.1f hour(s)", settings.skip_gap_size * 1.0f / 60.0f);
+                } else if (settings.skip_gap_size >= 1440) {
+                        snprintf(buf, 64, "%0.1f days(s)", settings.skip_gap_size * 1.0f / 1440.0f);
                 }
-                ImGui::SliderInt("Acceptable segmented gap", &minutes_gap, 10, 5760, buf);
+                if (ImGui::SliderInt("Skip gaps of this size.", &settings.skip_gap_size, 10, 5760, buf)) {
+                        ImGui::MarkIniSettingsDirty();
+                }
 
                 ImPlot::SetNextPlotLimits(
                         graph_total_pop_data->xs.front(),
@@ -868,11 +878,12 @@ void ShowPlayerPopulation::RenderSettings() {
                         0,
                         std::ranges::max(graph_total_pop_data->ys),
                         ImGuiCond_FirstUseEver);
+
                 // transform functions must be set before adding ImPlotAxisFlags_CustomFormat
                 // flag to an axis
                 ImPlot::GetStyle().x_label_tf    = &graphed_data_t::xlabel_transform_func;
                 ImPlot::GetStyle().x_mouse_tf    = &graphed_data_t::xval_mouse_func;
-                ImPlot::GetStyle().x_skip_gap_sz = duration_cast<seconds>(minutes {minutes_gap}).count();
+                ImPlot::GetStyle().x_skip_gap_sz = duration_cast<seconds>(minutes {settings.skip_gap_size}).count();
                 if (ImPlot::BeginPlot(
                             "Population Numbers over Time",
                             "time",
@@ -1120,6 +1131,30 @@ void ShowPlayerPopulation::RenderSettings() {
                         "League is exited.");
 
                 ImGui::NewLine();
+
+                // Question 9
+                ImGui::Indent(INDENT_OFFSET);
+
+                ImGui::TextUnformatted("WHY DO I GET AN ERROR NOTIFICATION ABOUT SELECTING A PLAYLIST?");
+                AddUnderline(col_white);
+
+                ImGui::Unindent(INDENT_OFFSET);
+
+                ImGui::TextWrapped(
+                        "Because of the problem where you don't start receiving population data until you queue for "
+                        "matchmaking.\nThe plugin tries to queue for you. But...");
+                ImGui::NewLine();
+                ImGui::TextWrapped(
+                        "if you use single selection or have multiple selection enabled without any playlists "
+                        "selected, ");
+                AddUnderline(col_white);
+                ImGui::NewLine();
+                ImGui::TextWrapped(
+                        "the plugin can't start this process for you, and you'll get that error notification. Try "
+                        "queueing for a playlist (aka game mode) yourself to manually start the process of getting "
+                        "population data.");
+
+                ImGui::NewLine();
         }
 }
 
@@ -1326,7 +1361,7 @@ void ShowPlayerPopulation::GET_DEFAULT_POP_NUMBER_PLACEMENTS() {
 ///
 /// also:
 /// "Don't call this yourself, BM will call this function with a pointer
-/// to the current ImGui context"
+/// to the current ImGui context" -- from the pluginsettingswindow.h file
 /// ...
 ///
 /// so ¯\(°_o)/¯
@@ -1334,7 +1369,7 @@ void ShowPlayerPopulation::GET_DEFAULT_POP_NUMBER_PLACEMENTS() {
 /// <param name="ctx">AFAIK The pointer to the ImGui context</param>
 void ShowPlayerPopulation::SetImGuiContext(uintptr_t ctx) {
         ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext *>(ctx));
-
+        ;
         // bakkesmod doesn't handle implot's requirements for the call to be made to
         // ImPlot::CreateContext. It only does it for ImGui. So, I'm just calling it here to
         // create it for the lifetime of the plugin, even though I don't care how it's handled.
@@ -1684,6 +1719,11 @@ static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *
         if (sscanf(line, "chosen_overlay_text_color={%f,%f,%f,%f}", &colval1, &colval2, &colval3, &colval4) == 4) {
                 settings->chosen_overlay_text_color = ImVec4 {colval1, colval2, colval3, colval4};
         }
+
+        int gap_size;
+        if (sscanf(line, "skip_gap_size=%d", &gap_size) == 1) {
+                settings->skip_gap_size = gap_size;
+        }
 }
 
 static void ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * handler, ImGuiTextBuffer * buf) {
@@ -1721,6 +1761,8 @@ static void ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * han
                 settings.chosen_overlay_text_color.y,
                 settings.chosen_overlay_text_color.z,
                 settings.chosen_overlay_text_color.w);
+        buf->append("\n");
+        buf->appendf("skip_gap_size=%d", settings.skip_gap_size);
         buf->append("\n");
 }
 

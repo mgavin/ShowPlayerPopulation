@@ -12,7 +12,6 @@ private:
 
                 HookedEvent(std::string eN, bool iP) : eventName(std::move(eN)), isPost(iP) {}
                 ~HookedEvent() {
-                        LOG("{} unhooked", eventName);
                         isPost ? gameWrapper->UnhookEventPost(eventName) : gameWrapper->UnhookEvent(eventName);
                 }
 
@@ -72,7 +71,8 @@ void HookedEvents::AddHookedEventWithCaller(
         bool                                                                isPost) {
         if (gameWrapper == nullptr) {
                 throw std::exception {
-                        "gameWrapper not set for hooking functions (put HookedEvents::gameWrapper = gameWrapper in your OnLoad() plugin member function)"};
+                        "gameWrapper not set for hooking functions (put HookedEvents::gameWrapper = gameWrapper in "
+                        "your OnLoad() plugin member function)"};
         }
         if (std::find_if(
                     begin(hooked_events),
@@ -103,7 +103,8 @@ void HookedEvents::AddHookedEvent(
         bool                                       isPost) {
         if (gameWrapper == nullptr) {
                 throw std::exception {
-                        "gameWrapper not set for hooking functions (put HookedEvents::gameWrapper = gameWrapper in your OnLoad() plugin member function)"};
+                        "gameWrapper not set for hooking functions (put HookedEvents::gameWrapper = gameWrapper in "
+                        "your OnLoad() plugin member function)"};
         }
         if (std::find_if(
                     begin(hooked_events),
