@@ -42,21 +42,33 @@ inline void PopItemDisabled() {
 }
 }  // namespace ImGuiSugar
 
-#define IMGUI_SUGAR_PARENT_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)                                     \
-        const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> IMGUI_SUGAR_CONCAT1(_ui_scope_, __LINE__) = \
-                ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(IMGUI_SUGAR_ES(BEGIN), &END)) \
+#define IMGUI_SUGAR_PARENT_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)              \
+        const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> IMGUI_SUGAR_CONCAT1( \
+                _ui_scope_,                                                        \
+                __LINE__) =                                                        \
+                ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(       \
+                                  IMGUI_SUGAR_ES(BEGIN),                           \
+                                  &END))                                           \
                         : (nullptr));
 
-#define IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)                                                  \
-        if (const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> _ui_scope_guard =                             \
-                    ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(IMGUI_SUGAR_ES_0(BEGIN), &END)) \
-                            : (nullptr));                                                                       \
+#define IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)                      \
+        if (const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> _ui_scope_guard = \
+                    ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(    \
+                                      IMGUI_SUGAR_ES_0(BEGIN),                      \
+                                      &END))                                        \
+                            : (nullptr));                                           \
             true)
 
-#define maybe_Disabled(flag) \
-        IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(ImGuiSugar::PushItemDisabled, ImGuiSugar::PopItemDisabled, flag)
+#define maybe_Disabled(flag)                  \
+        IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0( \
+                ImGuiSugar::PushItemDisabled, \
+                ImGuiSugar::PopItemDisabled,  \
+                flag)
 
-#define group_Disabled(flag) \
-        IMGUI_SUGAR_PARENT_SCOPED_STYLE_COND_VOID_0(ImGuiSugar::PushItemDisabled, ImGuiSugar::PopItemDisabled, flag)
+#define group_Disabled(flag)                         \
+        IMGUI_SUGAR_PARENT_SCOPED_STYLE_COND_VOID_0( \
+                ImGuiSugar::PushItemDisabled,        \
+                ImGuiSugar::PopItemDisabled,         \
+                flag)
 
 #endif

@@ -43,7 +43,7 @@
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.0", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.1", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
@@ -311,6 +311,15 @@ void ShowPlayerPopulation::init_settings_handler() {
 
 /// <summary>
 /// Updates the data to include the latest population records.
+///
+///
+/// Purportedly https://rocket-league.com/playlist-population can get individual playlsit values
+/// between pc, epic, xbox, ps platforms... so... bakkesmod isn't updated or is limited in certain
+/// ways regarding getting population data. There must be some way to filter by "OnlinePlatform"
+/// either through RL's own functions, or through some other third-party API. BUT the third-party API
+/// gives me pause because it wouldn't break down population by game mode...(?).
+///
+/// Getting the RL API ... sigh ... would open up so much
 /// </summary>
 void ShowPlayerPopulation::record_population() {
         using namespace std::chrono;
@@ -484,19 +493,15 @@ void ShowPlayerPopulation::CHECK_NOW() {
 
         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
         if (mw) {
-                // It's my theory that the playlist selection and the category selected here
-                // result in something being "selected", yet nothing gets selected because it's
-                // not technically valid, but this prevents the "Error: Select a playlist" error
-                // from popping up -_-
-
-                // I'm so over this. Fuck it and fuck this broken API.
-                // mw.SetPlaylistSelection(Playlist::EXTRAS_SNOWDAY, true);
-
-                // there isn't an extras playlist anymore...
-                // mw.StartMatchmaking(PlaylistCategory::EXTRAS);
-                // mw.CancelMatchmaking();
-                cvarManager->executeCommand("queue", false);  // lovely -_-
-                cvarManager->executeCommand("queue_cancel", false);
+                // wait a whole second to trigger the queue to give time for this
+                // mechanism to initialize in bakkesmod.
+                gameWrapper->SetTimeout(
+                        [this](GameWrapper *) {
+                                cvarManager->executeCommand("queue", false);  // lovely -_-
+                                cvarManager->executeCommand("queue_cancel", false);
+                        },
+                        1.0f);  // this is in fucking seconds jfc.
+                // the "queue" mechanism seems to be an artifact of an old idea
         }
 }
 
@@ -1141,17 +1146,21 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::Unindent(INDENT_OFFSET);
 
                 ImGui::TextWrapped(
-                        "Because of the problem where you don't start receiving population data until you queue for "
+                        "Because of the problem where you don't start receiving population "
+                        "data until you queue for "
                         "matchmaking.\nThe plugin tries to queue for you. But...");
                 ImGui::NewLine();
                 ImGui::TextWrapped(
-                        "if you use single selection or have multiple selection enabled without any playlists "
+                        "if you use single selection or have multiple selection enabled "
+                        "without any playlists "
                         "selected, ");
                 AddUnderline(col_white);
                 ImGui::NewLine();
                 ImGui::TextWrapped(
-                        "the plugin can't start this process for you, and you'll get that error notification. Try "
-                        "queueing for a playlist (aka game mode) yourself to manually start the process of getting "
+                        "the plugin can't start this process for you, and you'll get that "
+                        "error notification. Try "
+                        "queueing for a playlist (aka game mode) yourself to manually start "
+                        "the process of getting "
                         "population data.");
 
                 ImGui::NewLine();
