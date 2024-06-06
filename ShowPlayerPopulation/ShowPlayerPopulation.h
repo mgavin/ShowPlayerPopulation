@@ -266,7 +266,7 @@ public:
         void        SetImGuiContext(uintptr_t ctx) override;
 
         // inherit from
-        //				public BakkesMod::Plugin::PluginWibbndow
+        //				public BakkesMod::Plugin::PluginWindow
         //	 for the following
         void        OnOpen() override;
         void        OnClose() override;

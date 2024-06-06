@@ -1164,6 +1164,24 @@ void ShowPlayerPopulation::RenderSettings() {
                         "population data.");
 
                 ImGui::NewLine();
+
+                // Question 10
+                ImGui::Indent(INDENT_OFFSET);
+
+                ImGui::TextUnformatted("WHY DOES MY BAKKESMOD.LOG FILL UP WITH \"NO MATCHING PLAYLIST\" ERRORS?");
+                AddUnderline(col_white);
+
+                ImGui::Unindent(INDENT_OFFSET);
+
+                ImGui::TextWrapped(
+                        "Some game modes are enabled/disabled at Psyonix's discretion. If a game mode is disabled, "
+                        "bakkesmod "
+                        "will report there's \"no matching playlist\" when asking for its population data. "
+                        "Unfortunately, in response to asking for that data, it's hardcoded into bakkesmod to emit "
+                        "that error message to the console. I would rather ask for every playlist's population, rather "
+                        "than discredit the playlist because it was disabled at the time it was checked.");
+
+                ImGui::NewLine();
         }
 }
 
