@@ -6,11 +6,8 @@
 
 namespace imgui_helper {
 struct PluginSettings {
-        float hcolws[12] = {-1};  // horizontal overlay widths
         float hcolos[12] = {-1};  // horizontal overlay offsets
-
-        float vcolws[2] = {-1};  // vertical overlay widths
-        float vcolos[2] = {-1};  // vertical overlay offsets
+        float vcolos[2]  = {-1};  // vertical overlay offsets
 
         bool lock_overlay           = false;
         bool hide_overlay_title_bar = false;
@@ -19,6 +16,8 @@ struct PluginSettings {
 
         ImVec4 chosen_overlay_color      = {1.0f, 1.0f, 1.0f, 0.9f};
         ImVec4 chosen_overlay_text_color = {0.0f, 0.0f, 0.0f, 1.0f};
+
+        int skip_gap_size = 5760;
 };
 }  // namespace imgui_helper
 
@@ -43,21 +42,33 @@ inline void PopItemDisabled() {
 }
 }  // namespace ImGuiSugar
 
-#define IMGUI_SUGAR_PARENT_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)                                     \
-        const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> IMGUI_SUGAR_CONCAT1(_ui_scope_, __LINE__) = \
-                ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(IMGUI_SUGAR_ES(BEGIN), &END)) \
+#define IMGUI_SUGAR_PARENT_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)              \
+        const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> IMGUI_SUGAR_CONCAT1( \
+                _ui_scope_,                                                        \
+                __LINE__) =                                                        \
+                ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(       \
+                                  IMGUI_SUGAR_ES(BEGIN),                           \
+                                  &END))                                           \
                         : (nullptr));
 
-#define IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)                                                  \
-        if (const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> _ui_scope_guard =                             \
-                    ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(IMGUI_SUGAR_ES_0(BEGIN), &END)) \
-                            : (nullptr));                                                                       \
+#define IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(BEGIN, END, COND)                      \
+        if (const std::unique_ptr<ImGuiSugar::BooleanGuard<true>> _ui_scope_guard = \
+                    ((COND) ? (std::make_unique<ImGuiSugar::BooleanGuard<true>>(    \
+                                      IMGUI_SUGAR_ES_0(BEGIN),                      \
+                                      &END))                                        \
+                            : (nullptr));                                           \
             true)
 
-#define maybe_Disabled(flag) \
-        IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0(ImGuiSugar::PushItemDisabled, ImGuiSugar::PopItemDisabled, flag)
+#define maybe_Disabled(flag)                  \
+        IMGUI_SUGAR_SCOPED_STYLE_COND_VOID_0( \
+                ImGuiSugar::PushItemDisabled, \
+                ImGuiSugar::PopItemDisabled,  \
+                flag)
 
-#define group_Disabled(flag) \
-        IMGUI_SUGAR_PARENT_SCOPED_STYLE_COND_VOID_0(ImGuiSugar::PushItemDisabled, ImGuiSugar::PopItemDisabled, flag)
+#define group_Disabled(flag)                         \
+        IMGUI_SUGAR_PARENT_SCOPED_STYLE_COND_VOID_0( \
+                ImGuiSugar::PushItemDisabled,        \
+                ImGuiSugar::PopItemDisabled,         \
+                flag)
 
 #endif
