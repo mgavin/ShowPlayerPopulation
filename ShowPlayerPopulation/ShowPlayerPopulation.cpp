@@ -19,7 +19,7 @@
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.1", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.2", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
@@ -1475,6 +1475,11 @@ static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *
         if (sscanf(line, "chosen_overlay_text_color={%f,%f,%f,%f}", &colval1, &colval2, &colval3, &colval4) == 4) {
                 settings->chosen_overlay_text_color = ImVec4 {colval1, colval2, colval3, colval4};
         }
+
+        int gap_size;
+        if (sscanf(line, "skip_gap_size=%d", &gap_size) == 1) {
+                settings->skip_gap_size = gap_size;
+        }
 }
 
 static void ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * handler, ImGuiTextBuffer * buf) {
@@ -1513,6 +1518,8 @@ static void ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * han
                 settings.chosen_overlay_text_color.y,
                 settings.chosen_overlay_text_color.z,
                 settings.chosen_overlay_text_color.w);
+        buf->append("\n");
+        buf->appendf("skip_gap_size=%d", settings.skip_gap_size);
         buf->append("\n");
 }
 
