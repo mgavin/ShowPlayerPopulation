@@ -19,7 +19,7 @@
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.2", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.3", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
@@ -500,8 +500,9 @@ static inline void TextURL(const char * name_, const char * URL_, uint8_t SameLi
                         // What if the URL length is greater than int but less than size_t?
                         // well then the program should crash, but this is fine.
                         const int nchar =
-                                std::clamp(static_cast<int>(std::strlen(URL_)), 0, std::numeric_limits<int>::max());
+                                std::clamp(static_cast<int>(std::strlen(URL_)), 0, std::numeric_limits<int>::max() - 1);
                         wchar_t * URL = new wchar_t[nchar + 1];
+                        wmemset(URL, 0, nchar + 1);
                         MultiByteToWideChar(CP_UTF8, 0, URL_, nchar, URL, nchar);
                         ShellExecuteW(NULL, L"open", URL, NULL, NULL, SW_SHOWNORMAL);
 
@@ -747,17 +748,19 @@ void ShowPlayerPopulation::RenderSettings() {
                 ImGui::TextUnformatted(txt2);
 
                 ImGui::SameLine(0.0f, 50.0f);
+
                 ImGui::SetNextItemWidth(200.0f);
-                static int  minutes_gap = 600;
-                static char buf[64]     = {0};
-                if (minutes_gap < 60) {
-                        snprintf(buf, 64, "%d minutes", minutes_gap);
-                } else if (minutes_gap >= 60 && minutes_gap < 1440) {
-                        snprintf(buf, 64, "%0.1f hour(s)", minutes_gap * 1.0f / 60.0f);
-                } else if (minutes_gap >= 1440) {
-                        snprintf(buf, 64, "%0.1f days(s)", minutes_gap * 1.0f / 1440.0f);
+                static char buf[64] = {0};
+                if (settings.skip_gap_size < 60) {
+                        snprintf(buf, 64, "%d minutes", settings.skip_gap_size);
+                } else if (settings.skip_gap_size >= 60 && settings.skip_gap_size < 1440) {
+                        snprintf(buf, 64, "%0.1f hour(s)", settings.skip_gap_size * 1.0f / 60.0f);
+                } else if (settings.skip_gap_size >= 1440) {
+                        snprintf(buf, 64, "%0.1f days(s)", settings.skip_gap_size * 1.0f / 1440.0f);
                 }
-                ImGui::SliderInt("Acceptable segmented gap", &minutes_gap, 10, 5760, buf);
+                if (ImGui::SliderInt("Skip gaps of this size.", &settings.skip_gap_size, 10, 5760, buf)) {
+                        ImGui::MarkIniSettingsDirty();
+                }
 
                 ImPlot::SetNextPlotLimits(
                         graph_total_pop_data->xs.front(),
@@ -765,11 +768,12 @@ void ShowPlayerPopulation::RenderSettings() {
                         0,
                         std::ranges::max(graph_total_pop_data->ys),
                         ImGuiCond_FirstUseEver);
+
                 // transform functions must be set before adding ImPlotAxisFlags_CustomFormat
                 // flag to an axis
                 ImPlot::GetStyle().x_label_tf    = &graphed_data_t::xlabel_transform_func;
                 ImPlot::GetStyle().x_mouse_tf    = &graphed_data_t::xval_mouse_func;
-                ImPlot::GetStyle().x_skip_gap_sz = duration_cast<seconds>(minutes {minutes_gap}).count();
+                ImPlot::GetStyle().x_skip_gap_sz = duration_cast<seconds>(minutes {settings.skip_gap_size}).count();
                 if (ImPlot::BeginPlot(
                             "Population Numbers over Time",
                             "time",
