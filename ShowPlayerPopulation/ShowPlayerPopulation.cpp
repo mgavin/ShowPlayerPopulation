@@ -19,7 +19,7 @@
 #include "internal/csv_row.hpp"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.3", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.5", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
@@ -190,7 +190,15 @@ void ShowPlayerPopulation::init_hooked_events() {
 
         HookedEvents::AddHookedEvent(
                 "Function ProjectX.PsyNetConnection_X.EventConnected",
-                [this](std::string eventName) { DO_CHECK = true; });
+                [this](std::string eventName) {
+                        if (in_main_menu) {
+                                // because you might disconnect while in the game.
+                                // and then reconnect.
+                                CHECK_NOW();
+                        } else {
+                                DO_CHECK = true;
+                        }
+                });
 
         HookedEvents::AddHookedEvent(
                 "Function TAGame.StatusObserver_MenuStack_TA.HandleMenuChange",
@@ -333,6 +341,7 @@ void ShowPlayerPopulation::add_last_entry_to_graph_data() {
 /// </summary>
 void ShowPlayerPopulation::prepare_data() {
         // prepare data to be shown
+
         const std::map<PlaylistId, int> & playlist_population = get_last_bank_entry().playlist_pop;
 
         // clear persistent data that's used elsewhere :}
@@ -436,16 +445,11 @@ void ShowPlayerPopulation::CHECK_NOW() {
         }
 
         MatchmakingWrapper mw = gameWrapper->GetMatchmakingWrapper();
+
         if (mw) {
-                // wait a whole second to trigger the queue to give time for this
-                // mechanism to initialize in bakkesmod.
-                gameWrapper->SetTimeout(
-                        [this](GameWrapper *) {
-                                cvarManager->executeCommand("queue", false);  // lovely -_-
-                                cvarManager->executeCommand("queue_cancel", false);
-                        },
-                        1.0f);  // this is in fucking seconds jfc.
-                // the "queue" mechanism seems to be an artifact of an old idea
+                // Queries matchmaking to begin getting population data every 5 seconds.
+                mw.StartMatchmaking(PlaylistCategory::CASUAL);
+                mw.CancelMatchmaking();
         }
 }
 
@@ -1025,53 +1029,41 @@ void ShowPlayerPopulation::RenderSettings() {
                 // Question 9
                 ImGui::Indent(INDENT_OFFSET);
 
-                ImGui::TextUnformatted("WHY DO I GET AN ERROR NOTIFICATION ABOUT SELECTING A PLAYLIST?");
+                ImGui::TextUnformatted(
+                        "WHY DO I GET AN ERROR NOTIFICATION ABOUT SELECTING A PLAYLIST? OR ABOUT STARTING "
+                        "MATCHMAKING?");
                 AddUnderline(col_white);
 
                 ImGui::Unindent(INDENT_OFFSET);
 
                 ImGui::TextWrapped(
-                        "Because of the problem where you don't start receiving population "
-                        "data until you queue for "
-                        "matchmaking.\nThe plugin tries to queue for you. But...");
-                ImGui::NewLine();
-                ImGui::TextWrapped(
-                        "if you use single selection or have multiple selection enabled "
-                        "without any playlists "
-                        "selected, ");
+                        "If you use single selection, or have multiple selection enabled "
+                        "without any CASUAL playlists selected in the menu, "
+                        "or are queued for a tournament...");
                 AddUnderline(col_white);
                 ImGui::NewLine();
                 ImGui::TextWrapped(
-                        "the plugin can't start this process for you, and you'll get that "
-                        "error notification. Try "
-                        "queueing for a playlist (aka game mode) yourself to manually start "
-                        "the process of getting "
-                        "population data.");
+                        "You'll get that error notification. "
+                        "THANKFULLY, this doesn't matter, and you'll get population data even if "
+                        "you see the error.");
 
                 ImGui::NewLine();
 
                 // Question 10
                 ImGui::Indent(INDENT_OFFSET);
 
-                ImGui::TextUnformatted(
-                        "WHY DOES MY BAKKESMOD.LOG FILL UP WITH \"NO MATCHING PLAYLIST\" "
-                        "ERRORS?");
+                ImGui::TextUnformatted("WHY DOES MY BAKKESMOD.LOG FILL UP WITH \"NO MATCHING PLAYLIST\" ERRORS?");
                 AddUnderline(col_white);
 
                 ImGui::Unindent(INDENT_OFFSET);
 
                 ImGui::TextWrapped(
-                        "Some game modes are enabled/disabled at Psyonix's discretion. If a "
-                        "game mode is disabled, "
+                        "Some game modes are enabled/disabled at Psyonix's discretion. If a game mode is disabled, "
                         "bakkesmod "
-                        "will report there's \"no matching playlist\" when asking for its "
-                        "population data. "
-                        "Unfortunately, in response to asking for that data, it's hardcoded "
-                        "into bakkesmod to emit "
-                        "that error message to the console. I would rather ask for every "
-                        "playlist's population, rather "
-                        "than discredit the playlist because it was disabled at the time it "
-                        "was checked.");
+                        "will report there's \"no matching playlist\" when asking for its population data. "
+                        "Unfortunately, it's hardcoded for bakkesmod to emit "
+                        "that error message to the console. I would rather ask for every playlist's population "
+                        "than discredit the playlist because it was disabled at the time it was checked.");
 
                 ImGui::NewLine();
         }
