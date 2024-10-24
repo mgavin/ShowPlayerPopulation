@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/spdx/spdx-spec/v2.2.1/schemas/spdx-schema.json",
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "documentNamespace": "https://spdx.org/spdxdocs/mio-x64-windows-static-2023-03-03-8f983049-9acf-4d8c-a774-a9b061307b33",
+  "name": "mio:x64-windows-static@2023-03-03 e3dbc8553d9e0ba0accf617cf8054d461b216a138f585d11d1215c3b7278f167",
+  "creationInfo": {
+    "creators": [
+      "Tool: vcpkg-2024-06-10-02590c430e4ed9215d27870138c2e579cc338772"
+    ],
+    "created": "2024-10-22T22:45:47Z"
+  },
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "GENERATES",
+      "relatedSpdxElement": "SPDXRef-binary"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-0"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "GENERATED_FROM",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-0",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-1",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    }
+  ],
+  "packages": [
+    {
+      "name": "mio",
+      "SPDXID": "SPDXRef-port",
+      "versionInfo": "2023-03-03",
+      "downloadLocation": "git+https://github.com/microsoft/vcpkg@32e1d9bb77df214fec0e6ea240671114e3d3df30",
+      "homepage": "https://github.com/mandreyel/mio",
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "description": "Cross-platform header-only C++11 library for memory mapped file IO.",
+      "comment": "This is the port (recipe) consumed by vcpkg."
+    },
+    {
+      "name": "mio:x64-windows-static",
+      "SPDXID": "SPDXRef-binary",
+      "versionInfo": "e3dbc8553d9e0ba0accf617cf8054d461b216a138f585d11d1215c3b7278f167",
+      "downloadLocation": "NONE",
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "comment": "This is a binary package built by vcpkg."
+    },
+    {
+      "SPDXID": "SPDXRef-resource-1",
+      "name": "mandreyel/mio",
+      "downloadLocation": "git+https://github.com/mandreyel/mio@8b6b7d878c89e81614d05edca7936de41ccdd2da",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "checksums": [
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "444131d4839f2244dd88722f5bfad2cfa47336e2a4405518a2ff8f0d80f2755321d7d627f8d5b890864a5dc3f3f810a1c7dd6588ff3e9039a6ef7d010e0f2f06"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/32e1d9bb77df214fec0e6ea240671114e3d3df30/portfile.cmake",
+      "SPDXID": "SPDXRef-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1c46dace04f3d8e0c2f4b1bb7f7c4484410667fb1b6fc2d500d4dc3dcbade98f"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/32e1d9bb77df214fec0e6ea240671114e3d3df30/vcpkg.json",
+      "SPDXID": "SPDXRef-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "55435d7a8bb9a35d23a9acbae551acbf5d29450499728513aebf6b805355bac9"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    }
+  ]
+}

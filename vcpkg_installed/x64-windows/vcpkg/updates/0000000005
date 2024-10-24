@@ -1,0 +1,9 @@
+Package: string-view-lite
+Version: 1.7.0
+Port-Version: 1
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-windows
+Multi-Arch: same
+Abi: 0975b4835d1811bbffcce72505ebb853b52c3a935c41148df87f91daa94be7fa
+Description: A C++17-like string_view for C++98, C++11 and later in a single-file header-only library
+Status: install ok installed

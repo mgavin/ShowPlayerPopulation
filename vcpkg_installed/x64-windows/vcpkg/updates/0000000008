@@ -1,0 +1,7 @@
+Package: hedley
+Version: 15
+Architecture: x64-windows
+Multi-Arch: same
+Abi: f27351f8649bdcdd7a7317b54110618c820b7d9396ca8a217daa7a956326d8d7
+Description: A C/C++ header to help move #ifdefs out of your code
+Status: install ok half-installed

@@ -14,10 +14,8 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_WINDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <LanguageStandard>stdcpp20</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
       <SDLCheck>true</SDLCheck>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <!-- BECAUSE FOR SOME REASON, BakkesMod::Plugin::PluginSettingsWindow DOESN'T DEFINE std::string BEFORE USAGE??? -->
       <ForcedIncludeFiles>string;%(ForcedIncludeFiles)</ForcedIncludeFiles>
     </ClCompile>

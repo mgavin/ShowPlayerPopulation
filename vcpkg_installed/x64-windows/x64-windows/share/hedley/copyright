@@ -1,0 +1,30 @@
+/* Hedley - https://nemequ.github.io/hedley
+ * Created by Evan Nemerson <evan@nemerson.com>
+ *
+ * To the extent possible under law, the author(s) have dedicated all
+ * copyright and related and neighboring rights to this software to
+ * the public domain worldwide. This software is distributed without
+ * any warranty.
+ *
+ * For details, see <http://creativecommons.org/publicdomain/zero/1.0/>.
+ * SPDX-License-Identifier: CC0-1.0
+ */
+
+#if !defined(HEDLEY_VERSION) || (HEDLEY_VERSION < 15)
+#if defined(HEDLEY_VERSION)
+#  undef HEDLEY_VERSION
+#endif
+#define HEDLEY_VERSION 15
+
+#if defined(HEDLEY_STRINGIFY_EX)
+#  undef HEDLEY_STRINGIFY_EX
+#endif
+#define HEDLEY_STRINGIFY_EX(x) #x
+
+#if defined(HEDLEY_STRINGIFY)
+#  undef HEDLEY_STRINGIFY
+#endif
+#define HEDLEY_STRINGIFY(x) HEDLEY_STRINGIFY_EX(x)
+
+#if defined(HEDLEY_CONCAT_EX)
+#  undef HEDLEY_CONCAT_EX

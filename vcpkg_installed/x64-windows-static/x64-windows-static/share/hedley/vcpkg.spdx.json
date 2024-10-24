@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/spdx/spdx-spec/v2.2.1/schemas/spdx-schema.json",
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "documentNamespace": "https://spdx.org/spdxdocs/hedley-x64-windows-static-15-c5b21be9-24e7-42eb-9124-84e0834504f2",
+  "name": "hedley:x64-windows-static@15 b838e41ac5a3daee9e96e777da3ba9f01a95f05621f8303122df94b71f6ce8c8",
+  "creationInfo": {
+    "creators": [
+      "Tool: vcpkg-2024-06-10-02590c430e4ed9215d27870138c2e579cc338772"
+    ],
+    "created": "2024-10-22T22:45:48Z"
+  },
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "GENERATES",
+      "relatedSpdxElement": "SPDXRef-binary"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-0"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "GENERATED_FROM",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-0",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-1",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    }
+  ],
+  "packages": [
+    {
+      "name": "hedley",
+      "SPDXID": "SPDXRef-port",
+      "versionInfo": "15",
+      "downloadLocation": "git+https://github.com/microsoft/vcpkg@f6ad2c912329ae4108883b8b8e20f2c50e968466",
+      "homepage": "https://nemequ.github.io/hedley/",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "description": "A C/C++ header to help move #ifdefs out of your code",
+      "comment": "This is the port (recipe) consumed by vcpkg."
+    },
+    {
+      "name": "hedley:x64-windows-static",
+      "SPDXID": "SPDXRef-binary",
+      "versionInfo": "b838e41ac5a3daee9e96e777da3ba9f01a95f05621f8303122df94b71f6ce8c8",
+      "downloadLocation": "NONE",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "comment": "This is a binary package built by vcpkg."
+    },
+    {
+      "SPDXID": "SPDXRef-resource-1",
+      "name": "nemequ/hedley",
+      "downloadLocation": "git+https://github.com/nemequ/hedley@8fb0604a8095f6c907378cc3f0391520ae843f6f",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "checksums": [
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "3ce102d348f96bd8c7d44bc7119a8f637041f613e1e6a578c15e24c56f79dbcb0b1bce93bc8779a90cc2e34ab74d09f29d240b4519d592973c59da49923460da"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/f6ad2c912329ae4108883b8b8e20f2c50e968466/portfile.cmake",
+      "SPDXID": "SPDXRef-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e583a0f9910b9def5a6cfa7e2e1fc915e46e03278cc896ef495137300df491f7"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/f6ad2c912329ae4108883b8b8e20f2c50e968466/vcpkg.json",
+      "SPDXID": "SPDXRef-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1800447a7d24b768610b3841d972b28116e591cace74f0e7f1815a11fef6ab5d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    }
+  ]
+}

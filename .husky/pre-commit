@@ -1,1 +1,4 @@
-npx git-format-staged --formatter 'clang-format -i "{}"' '*.c' '*.cpp' '*.cxx' '*.cc' '*.h' '*.hpp' '*.hh' '*.m' '*.mm' '*.js' '*.java'
+#!/bin/sh
+#. "$(dirname "$0")/_/husky.sh"
+
+# npx git-format-staged --formatter 'clang-format -i "{}"' '*.c' '*.cpp' '*.cxx' '*.cc' '*.h' '*.hpp' '*.hh' '*.m' '*.mm' '*.js' '*.java'

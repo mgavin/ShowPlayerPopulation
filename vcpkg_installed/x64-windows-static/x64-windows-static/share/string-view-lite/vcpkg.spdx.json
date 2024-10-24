@@ -1,0 +1,109 @@
+{
+  "$schema": "https://raw.githubusercontent.com/spdx/spdx-spec/v2.2.1/schemas/spdx-schema.json",
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "documentNamespace": "https://spdx.org/spdxdocs/string-view-lite-x64-windows-static-1.7.0#1-5a41fed5-5d55-466d-8d21-e43c43b762a4",
+  "name": "string-view-lite:x64-windows-static@1.7.0#1 fef62394c4a0847b651ed10d5df41a3c33e4ee321a6dba32898d7c4315517c6b",
+  "creationInfo": {
+    "creators": [
+      "Tool: vcpkg-2024-06-10-02590c430e4ed9215d27870138c2e579cc338772"
+    ],
+    "created": "2024-10-22T22:45:43Z"
+  },
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "GENERATES",
+      "relatedSpdxElement": "SPDXRef-binary"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-0"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "GENERATED_FROM",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-0",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-1",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    }
+  ],
+  "packages": [
+    {
+      "name": "string-view-lite",
+      "SPDXID": "SPDXRef-port",
+      "versionInfo": "1.7.0#1",
+      "downloadLocation": "git+https://github.com/microsoft/vcpkg@ef393f08f15d4f962c5d9d37c4c2036dff02be98",
+      "licenseConcluded": "BSL-1.0",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "description": "A C++17-like string_view for C++98, C++11 and later in a single-file header-only library",
+      "comment": "This is the port (recipe) consumed by vcpkg."
+    },
+    {
+      "name": "string-view-lite:x64-windows-static",
+      "SPDXID": "SPDXRef-binary",
+      "versionInfo": "fef62394c4a0847b651ed10d5df41a3c33e4ee321a6dba32898d7c4315517c6b",
+      "downloadLocation": "NONE",
+      "licenseConcluded": "BSL-1.0",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "comment": "This is a binary package built by vcpkg."
+    },
+    {
+      "SPDXID": "SPDXRef-resource-1",
+      "name": "martinmoene/string-view-lite",
+      "downloadLocation": "git+https://github.com/martinmoene/string-view-lite@v1.7.0",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "checksums": [
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "9dd8d2ad838275b1d5418520acf0f215dc586ff40f2dac7a2e4fd845aae5eb3663ce81bc6117df50b0a68f2b8152f3d3ccb0d611728af47bc1b11286328125b5"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/ef393f08f15d4f962c5d9d37c4c2036dff02be98/portfile.cmake",
+      "SPDXID": "SPDXRef-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9de1387de9bd4bdc26b92d442cd7f17eea1b0c66ed48dc5683bf4b5bb52b939f"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/ef393f08f15d4f962c5d9d37c4c2036dff02be98/vcpkg.json",
+      "SPDXID": "SPDXRef-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1bc8e3b2897a24fdf425b35aefa19ae3cde613b261f8914b0bd90994ece689d8"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    }
+  ]
+}

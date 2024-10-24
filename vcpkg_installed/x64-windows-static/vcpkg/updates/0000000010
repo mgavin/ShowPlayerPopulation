@@ -1,0 +1,8 @@
+Package: vincentlaucsb-csv-parser
+Version: 2.2.3
+Depends: hedley, mio, string-view-lite, vcpkg-cmake:x64-windows, vcpkg-cmake-config:x64-windows
+Architecture: x64-windows-static
+Multi-Arch: same
+Abi: 374eceaa0b28f2dd269a983560403d3d4f81da0fb94e293f2b474e41b7025f27
+Description: A modern C++ library for reading, writing, and analyzing CSV (and similar) files.
+Status: install ok half-installed

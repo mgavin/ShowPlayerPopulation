@@ -1,0 +1,8 @@
+Package: mio
+Version: 2023-03-03
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-windows
+Multi-Arch: same
+Abi: b2b2e28137a4d084c2042a6b9a955ddaaa16161004f92ed109b2e8616e590750
+Description: Cross-platform header-only C++11 library for memory mapped file IO.
+Status: install ok installed

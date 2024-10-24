@@ -16,11 +16,10 @@
  *
  * OTHERS:
  *  - new project template with cmake [5/10]
- *  - Generate the RL SDK to see about window positions / playlist information. [7/10]
- *  - auto forfeit and hide blueprints. [6/10]
  *  - rewrite instant suite [6/10]
- *  - ~~nameplate colors. [10/10]~~ IM SO HAPPY! THIS IS LIKE A 2//10!!!!!'
  *
+ *
+ * -- need to rewrite this and redo the project somehow. something's not playing nicely with mutex / the game thread
  **/
 
 #include "ShowPlayerPopulation.h"
@@ -37,11 +36,10 @@
 #include <ranges>
 #include <thread>
 
-#include "csv.hpp"
 #include "implot.h"
+#include "vincentlaucsb-csv-parser/csv.hpp"
 
 #include "HookedEvents.h"
-#include "internal/csv_row.hpp"
 #include "Logger.h"
 
 BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.5", /*UNUSED*/ NULL);
@@ -101,9 +99,8 @@ void ShowPlayerPopulation::init_datafile() {
             recordwriter << header;
       } else {
             // the data file exists.
-            csv::CSVReader recordreader {RECORD_POPULATION_FILE.string()};
-            csv::CSVRow    row;
-
+            csv::CSVReader                 recordreader {RECORD_POPULATION_FILE.string()};
+            csv::CSVRow                    row;
             // read in all rows to be kept in memory
             const std::vector<std::string> header = recordreader.get_col_names();
             while (recordreader.read_row(row)) {
@@ -319,10 +316,11 @@ void ShowPlayerPopulation::init_settings_handler() {
 ///
 ///
 /// Purportedly https://rocket-league.com/playlist-population can get individual playlsit values
-/// between pc, epic, xbox, ps platforms... so... bakkesmod isn't updated or is limited in certain
-/// ways regarding getting population data. There must be some way to filter by "OnlinePlatform"
-/// either through RL's own functions, or through some other third-party API. BUT the third-party API
-/// gives me pause because it wouldn't break down population by game mode...(?).
+/// between pc, epic, xbox, ps platforms... so... bakkesmod isn't updated or is limited in
+/// certain ways regarding getting population data. There must be some way to filter by
+/// "OnlinePlatform" either through RL's own functions, or through some other third-party API.
+/// BUT the third-party API gives me pause because it wouldn't break down population by game
+/// mode...(?).
 ///
 /// Getting the RL API ... sigh ... would open up so much
 /// </summary>
@@ -946,9 +944,8 @@ void ShowPlayerPopulation::RenderSettings() {
             ImGui::TextUnformatted("Click a category to see it graphed.");
 
             ImGui::NextColumn();
-            std::string num_avail_points = std::vformat(
-                  "There are {} available data points.",
-                  std::make_format_args(graph_total_pop_data->xs.size()));
+            std::string num_avail_points =
+                  std::format("There are {} available data points.", graph_total_pop_data->xs.size());
             AlignForWidth(ImGui::CalcTextSize(num_avail_points.c_str()).x, 1.0f);
             ImGui::TextUnformatted(num_avail_points.c_str());
             ImGui::EndColumns();
@@ -1034,8 +1031,7 @@ void ShowPlayerPopulation::RenderSettings() {
 
             ImGui::Unindent(INDENT_OFFSET);
 
-            ImGui::TextUnformatted(
-                  std::vformat("{}", std::make_format_args(RECORD_POPULATION_FILE.generic_string())).c_str());
+            ImGui::TextUnformatted(std::format("{}", RECORD_POPULATION_FILE.generic_string()).c_str());
 
             ImGui::NewLine();
 
@@ -1139,7 +1135,8 @@ void ShowPlayerPopulation::RenderSettings() {
             ImGui::Indent(INDENT_OFFSET);
 
             ImGui::TextUnformatted(
-                  "WHY DO I GET AN ERROR NOTIFICATION ABOUT SELECTING A PLAYLIST? OR ABOUT STARTING "
+                  "WHY DO I GET AN ERROR NOTIFICATION ABOUT SELECTING A PLAYLIST? OR "
+                  "ABOUT STARTING "
                   "MATCHMAKING?");
             AddUnderline(col_white);
 
@@ -1153,7 +1150,8 @@ void ShowPlayerPopulation::RenderSettings() {
             ImGui::NewLine();
             ImGui::TextWrapped(
                   "You'll get that error notification. "
-                  "THANKFULLY, this doesn't matter, and you'll get population data even if "
+                  "THANKFULLY, this doesn't matter, and you'll get population data even "
+                  "if "
                   "you see the error.");
 
             ImGui::NewLine();
@@ -1161,18 +1159,24 @@ void ShowPlayerPopulation::RenderSettings() {
             // Question 10
             ImGui::Indent(INDENT_OFFSET);
 
-            ImGui::TextUnformatted("WHY DOES MY BAKKESMOD.LOG FILL UP WITH \"NO MATCHING PLAYLIST\" ERRORS?");
+            ImGui::TextUnformatted(
+                  "WHY DOES MY BAKKESMOD.LOG FILL UP WITH \"NO MATCHING PLAYLIST\" "
+                  "ERRORS?");
             AddUnderline(col_white);
 
             ImGui::Unindent(INDENT_OFFSET);
 
             ImGui::TextWrapped(
-                  "Some game modes are enabled/disabled at Psyonix's discretion. If a game mode is disabled, "
+                  "Some game modes are enabled/disabled at Psyonix's discretion. If a "
+                  "game mode is disabled, "
                   "bakkesmod "
-                  "will report there's \"no matching playlist\" when asking for its population data. "
+                  "will report there's \"no matching playlist\" when asking for its "
+                  "population data. "
                   "Unfortunately, it's hardcoded for bakkesmod to emit "
-                  "that error message to the console. I would rather ask for every playlist's population "
-                  "than discredit the playlist because it was disabled at the time it was checked.");
+                  "that error message to the console. I would rather ask for every "
+                  "playlist's population "
+                  "than discredit the playlist because it was disabled at the time it "
+                  "was checked.");
 
             ImGui::NewLine();
       }
@@ -1295,23 +1299,22 @@ void ShowPlayerPopulation::SNAPSHOT_PLAYLIST_POSITIONS() {
             disp.X      = static_cast<int>(dsps.x);
             disp.Y      = static_cast<int>(dsps.y);
       }
-      file << std::vformat(
+      file << std::format(
             "[{}x{}] {} {} {} {} {} {} {} {} {} {} {} {}",
-            std::make_format_args(
-                  disp.X,
-                  disp.Y,
-                  static_cast<int>(onepos.x),
-                  static_cast<int>(onepos.y),
-                  static_cast<int>(twopos.x),
-                  static_cast<int>(twopos.y),
-                  static_cast<int>(threepos.x),
-                  static_cast<int>(threepos.y),
-                  static_cast<int>(fourpos.x),
-                  static_cast<int>(fourpos.y),
-                  static_cast<int>(fivepos.x),
-                  static_cast<int>(fivepos.y),
-                  static_cast<int>(sixpos.x),
-                  static_cast<int>(sixpos.y)))
+            disp.X,
+            disp.Y,
+            static_cast<int>(onepos.x),
+            static_cast<int>(onepos.y),
+            static_cast<int>(twopos.x),
+            static_cast<int>(twopos.y),
+            static_cast<int>(threepos.x),
+            static_cast<int>(threepos.y),
+            static_cast<int>(fourpos.x),
+            static_cast<int>(fourpos.y),
+            static_cast<int>(fivepos.x),
+            static_cast<int>(fivepos.y),
+            static_cast<int>(sixpos.x),
+            static_cast<int>(sixpos.y))
            << std::endl;
 }
 
@@ -1436,10 +1439,9 @@ void ShowPlayerPopulation::Render() {
             with_Window("Show Player Population-DEV", NULL, flags) {
                   set_StyleColor(ImGuiCol_Text, settings.chosen_overlay_text_color);
                   ImGui::SetWindowFontScale(1.3f);
-                  CenterImGuiText(std::vformat(
-                                        "PLAYLIST POPULATIONS! LAST UPDATED: {0:%r} {0:%D}",
-                                        std::make_format_args(get_last_bank_entry().zt))
-                                        .c_str());
+                  CenterImGuiText(
+                        std::format("PLAYLIST POPULATIONS! LAST UPDATED: {0:%r} {0:%D}", get_last_bank_entry().zt)
+                              .c_str());
 
                   ImGui::NewLine();
                   set_StyleColor(ImGuiCol_ChildBg, settings.chosen_overlay_color);

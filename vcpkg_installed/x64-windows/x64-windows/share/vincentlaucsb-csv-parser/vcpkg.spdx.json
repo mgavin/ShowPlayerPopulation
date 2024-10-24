@@ -1,0 +1,176 @@
+{
+  "$schema": "https://raw.githubusercontent.com/spdx/spdx-spec/v2.2.1/schemas/spdx-schema.json",
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "documentNamespace": "https://spdx.org/spdxdocs/vincentlaucsb-csv-parser-x64-windows-2.2.3-57996edc-8c81-49d4-9f92-22d1c0308cd1",
+  "name": "vincentlaucsb-csv-parser:x64-windows@2.2.3 ba54281ec056a89c9cff2e7886afa9b783cac0397ba99a581a221b8c5364c255",
+  "creationInfo": {
+    "creators": [
+      "Tool: vcpkg-2024-06-10-02590c430e4ed9215d27870138c2e579cc338772"
+    ],
+    "created": "2024-09-06T18:50:28Z"
+  },
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "GENERATES",
+      "relatedSpdxElement": "SPDXRef-binary"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-0"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-1"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-2"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-3"
+    },
+    {
+      "spdxElementId": "SPDXRef-port",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-file-4"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "GENERATED_FROM",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-0",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-1",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-2",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-3",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    },
+    {
+      "spdxElementId": "SPDXRef-file-4",
+      "relationshipType": "CONTAINED_BY",
+      "relatedSpdxElement": "SPDXRef-port"
+    }
+  ],
+  "packages": [
+    {
+      "name": "vincentlaucsb-csv-parser",
+      "SPDXID": "SPDXRef-port",
+      "versionInfo": "2.2.3",
+      "downloadLocation": "git+https://github.com/microsoft/vcpkg@6bea0ccfd4832f3c1aeea917bd8c709c19750ebd",
+      "homepage": "https://github.com/vincentlaucsb/csv-parser",
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "description": "A modern C++ library for reading, writing, and analyzing CSV (and similar) files.",
+      "comment": "This is the port (recipe) consumed by vcpkg."
+    },
+    {
+      "name": "vincentlaucsb-csv-parser:x64-windows",
+      "SPDXID": "SPDXRef-binary",
+      "versionInfo": "ba54281ec056a89c9cff2e7886afa9b783cac0397ba99a581a221b8c5364c255",
+      "downloadLocation": "NONE",
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "comment": "This is a binary package built by vcpkg."
+    },
+    {
+      "SPDXID": "SPDXRef-resource-1",
+      "name": "vincentlaucsb/csv-parser",
+      "downloadLocation": "git+https://github.com/vincentlaucsb/csv-parser@2.2.3",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "checksums": [
+        {
+          "algorithm": "SHA512",
+          "checksumValue": "44af73db1762e55f8c93d7f97e3f3b4b550c4f4043ace693d4bdbb41cce0b78450afdcd3fea8c9b4ee60e8100e4160facf72db27c31e3c579e35b6acbb8fff0c"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/6bea0ccfd4832f3c1aeea917bd8c709c19750ebd/001-fix-cmake.patch",
+      "SPDXID": "SPDXRef-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "37a7c83933247cf50c6e7e26689c28a6f521d76ef1416c86bbd98d1e706ccc65"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/6bea0ccfd4832f3c1aeea917bd8c709c19750ebd/002-fix-include.patch",
+      "SPDXID": "SPDXRef-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "71117acb20c3044d7d26b030106aa4245eb942de4fbf80799e5db59308cfa2a3"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/6bea0ccfd4832f3c1aeea917bd8c709c19750ebd/portfile.cmake",
+      "SPDXID": "SPDXRef-file-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8d43495b6d4b2b9cb65e9296e5330141cc004030dffb47b4c5d2443ce0b5fd4f"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/6bea0ccfd4832f3c1aeea917bd8c709c19750ebd/usage",
+      "SPDXID": "SPDXRef-file-3",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ab3334914d5fca18b585bd4d5948bf09e6eabda3481e6728c70e7b8a2968c635"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./C:/Users/matthew/AppData/Local/vcpkg/registries/git-trees/6bea0ccfd4832f3c1aeea917bd8c709c19750ebd/vcpkg.json",
+      "SPDXID": "SPDXRef-file-4",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "6bc6011c4f61944637d080f2a69bea34e453e928f24206cb615c5883aadea4ef"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    }
+  ]
+}

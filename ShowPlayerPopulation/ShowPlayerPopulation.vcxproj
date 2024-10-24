@@ -18,10 +18,10 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
+    <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -36,21 +36,29 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+  </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgConfiguration>Release</VcpkgConfiguration>
+    <VcpkgUseStatic>true</VcpkgUseStatic>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)\bakkesmodsdk\include\bakkesmod\imgui;$(SolutionDir)\imgui_sugar;$(SolutionDir)\bakkesmodsdk\include;$(SolutionDir)\implot_bakkesmod;$(SolutionDir)\csv-parser\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(SolutionDir)\bakkesmodsdk\include\bakkesmod\imgui;$(SolutionDir)\imgui_sugar;$(SolutionDir)\bakkesmodsdk\include;$(SolutionDir)\implot_bakkesmod;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>
       </AdditionalOptions>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>NotSet</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -58,6 +66,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="..\.husky\pre-commit">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="..\package-lock.json" />
+    <None Include="..\package.json" />
+    <None Include="..\vcpkg-configuration.json" />
+    <None Include="..\vcpkg.json" />
     <None Include="vs_property_pages\BakkesMod.props" />
   </ItemGroup>
   <ItemGroup>
@@ -73,15 +88,6 @@
     <ClCompile Include="..\bakkesmodsdk\include\bakkesmod\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\implot_bakkesmod\implot.cpp" />
     <ClCompile Include="ShowPlayerPopulation.cpp" />
-    <ClCompile Include="..\csv-parser\include\internal\basic_csv_parser.cpp" />
-    <ClCompile Include="..\csv-parser\include\internal\col_names.cpp" />
-    <ClCompile Include="..\csv-parser\include\internal\csv_format.cpp" />
-    <ClCompile Include="..\csv-parser\include\internal\csv_reader.cpp" />
-    <ClCompile Include="..\csv-parser\include\internal\csv_reader_iterator.cpp" />
-    <ClCompile Include="..\csv-parser\include\internal\csv_row.cpp" />
-    <ClCompile Include="..\csv-parser\include\internal\csv_row_json.cpp" />
-    <ClCompile Include="..\csv-parser\include\internal\csv_stat.cpp" />
-    <ClCompile Include="..\csv-parser\include\internal\csv_utility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\bakkesmodsdk\include\bakkesmod\imgui\imconfig.h" />
@@ -101,17 +107,6 @@
     <ClInclude Include="..\implot_bakkesmod\implot.h" />
     <ClInclude Include="imgui_helper.h" />
     <ClInclude Include="ShowPlayerPopulation.h" />
-    <ClInclude Include="..\csv-parser\include\csv.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\basic_csv_parser.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\col_names.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\common.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\csv_format.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\csv_reader.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\csv_row.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\csv_stat.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\csv_utility.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\csv_writer.hpp" />
-    <ClInclude Include="..\csv-parser\include\internal\data_type.h" />
     <ClInclude Include="bm_helper.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="HookedEvents.h" />

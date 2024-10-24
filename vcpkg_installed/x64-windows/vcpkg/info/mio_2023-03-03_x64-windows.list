@@ -1,0 +1,17 @@
+x64-windows/
+x64-windows/include/
+x64-windows/include/mio/
+x64-windows/include/mio/detail/
+x64-windows/include/mio/detail/mmap.ipp
+x64-windows/include/mio/detail/string_util.hpp
+x64-windows/include/mio/mmap.hpp
+x64-windows/include/mio/page.hpp
+x64-windows/include/mio/shared_mmap.hpp
+x64-windows/share/
+x64-windows/share/mio/
+x64-windows/share/mio/copyright
+x64-windows/share/mio/mio-config-version.cmake
+x64-windows/share/mio/mio-config.cmake
+x64-windows/share/mio/mio-targets.cmake
+x64-windows/share/mio/vcpkg.spdx.json
+x64-windows/share/mio/vcpkg_abi_info.txt
