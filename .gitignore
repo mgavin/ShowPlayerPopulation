@@ -374,3 +374,4 @@ FodyWeavers.xsd
 clang-format-hooks/
 install_plugin_from_github.ps1
 README.html
+/MinHook

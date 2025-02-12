@@ -51,7 +51,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)\bakkesmodsdk\include\bakkesmod\imgui;$(SolutionDir)\imgui_sugar;$(SolutionDir)\bakkesmodsdk\include;$(SolutionDir)\implot_bakkesmod;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\bakkesmodsdk\include\bakkesmod\imgui;$(SolutionDir)\imgui_sugar;$(SolutionDir)\bakkesmodsdk\include;$(SolutionDir)\implot_bakkesmod;C:\Users\matthew\source\repos\ShowPlayerPopulation\MinHook\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>
       </AdditionalOptions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -62,7 +62,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shell32.lib;libMinHook-x64-v141-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\matthew\source\repos\ShowPlayerPopulation\MinHook\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

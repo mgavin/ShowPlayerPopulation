@@ -49,6 +49,17 @@ void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char 
 void   ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *, const char *);
 void   ImGuiSettingsWriteAll(ImGuiContext *, ImGuiSettingsHandler *, ImGuiTextBuffer *);
 
+using BMCORELOGFUNC        = void (*)(std::string, std::string);
+BMCORELOGFUNC origlogfuncp = nullptr;
+
+void __cdecl newlogfunc(std::string className, std::string message) {
+      if (message.contains("No matching playlist")) {
+            return;
+      }
+
+      origlogfuncp(className, message);
+}
+
 /// <summary>
 /// do the following when your plugin is loaded
 /// </summary>
@@ -56,6 +67,70 @@ void ShowPlayerPopulation::onLoad() {
       // initialize things
       _globalCVarManager        = cvarManager;
       HookedEvents::gameWrapper = gameWrapper;
+
+      // auto GLE = [this]() {
+      //       // Retrieve the system error message for the last-error code
+      //       LPVOID lpMsgBuf;
+      //       DWORD  dw = GetLastError();
+
+      //      if (FormatMessage(
+      //                FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+      //                NULL,
+      //                dw,
+      //                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+      //                (LPTSTR)&lpMsgBuf,
+      //                0,
+      //                NULL)
+      //          == 0) {
+      //            LOG(L"{}: {}", TEXT("FormatMessage failed"), TEXT("Error"));
+      //      } else {
+      //            LOG(L"LONGERRORCODEMSG: {}", reinterpret_cast<LPCTSTR>(lpMsgBuf));
+      //            LocalFree(lpMsgBuf);
+      //      }
+      //};
+
+      // std::wstring bakkesmod_dll = gameWrapper->GetBakkesModPathW() + L"\\dll\\bakkesmod.dll";
+      std::string annoying_log_function
+            = "?log@BMCore@@YAXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@0@Z";
+      // HMODULE       hModule;
+      // BMCORELOGFUNC logfunc = nullptr;
+
+      // if ((hModule = LoadLibrary(bakkesmod_dll.c_str())) != NULL) {
+      //       FARPROC fp;
+      //       if ((fp = GetProcAddress(hModule, annoying_log_function.c_str())) != NULL) {
+      //             logfunc = reinterpret_cast<BMCORELOGFUNC>(fp);
+      //       } else {
+      //             GLE();
+      //             LOG("{}", "WTF COULDNT GET THE PROCADDRESS?!?!");
+      //       }
+      // } else {
+      //       GLE();
+      //       LOG("{}", "WTF COULDNT GET THE LOADLIBRARY?!?!");
+      // }
+
+      // if (MH_Initialize() == MH_OK && logfunc != nullptr) {
+      //       if (MH_CreateHook(
+      //                 reinterpret_cast<void *>(logfunc),
+      //                 reinterpret_cast<void *>(newlogfunc),
+      //                 reinterpret_cast<void **>(&origlogfuncp))
+      //           == MH_OK) {
+      //             MH_EnableHook(logfunc);
+      //       }
+      // }
+
+      if (MH_Initialize() == MH_OK) {
+            if (MH_CreateHookApi(
+                      L"bakkesmod",
+                      // annoying_log_function.c_str(),
+                      "?log@BMCore@@YAXV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@0@Z",
+                      newlogfunc,
+                      reinterpret_cast<void **>(&origlogfuncp))
+                == MH_OK) {
+                  MH_EnableHook(MH_ALL_HOOKS);
+            } else {
+                  LOG("CREATEHOOKAPI DIDN'T WORK?");
+            }
+      }
 
       // init time zone for graphs
       _putenv_s("TZ", tz->name().data());
@@ -577,8 +652,8 @@ static inline void TextURL(const char * name_, const char * URL_, uint8_t SameLi
             if (ImGui::IsMouseClicked(0)) {
                   // What if the URL length is greater than int but less than size_t?
                   // well then the program should crash, but this is fine.
-                  const int nchar =
-                        std::clamp(static_cast<int>(std::strlen(URL_)), 0, std::numeric_limits<int>::max() - 1);
+                  const int nchar
+                        = std::clamp(static_cast<int>(std::strlen(URL_)), 0, std::numeric_limits<int>::max() - 1);
                   wchar_t * URL = new wchar_t[nchar + 1];
                   wmemset(URL, 0, nchar + 1);
                   MultiByteToWideChar(CP_UTF8, 0, URL_, nchar, URL, nchar);
@@ -944,8 +1019,8 @@ void ShowPlayerPopulation::RenderSettings() {
             ImGui::TextUnformatted("Click a category to see it graphed.");
 
             ImGui::NextColumn();
-            std::string num_avail_points =
-                  std::format("There are {} available data points.", graph_total_pop_data->xs.size());
+            std::string num_avail_points
+                  = std::format("There are {} available data points.", graph_total_pop_data->xs.size());
             AlignForWidth(ImGui::CalcTextSize(num_avail_points.c_str()).x, 1.0f);
             ImGui::TextUnformatted(num_avail_points.c_str());
             ImGui::EndColumns();
@@ -1849,4 +1924,6 @@ void ShowPlayerPopulation::onUnload() noexcept {
 
       prune_data();
       write_data_to_file();
+
+      MH_Uninitialize();
 }

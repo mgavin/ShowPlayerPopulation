@@ -12,6 +12,8 @@
 #include "bm_helper.h"
 #include "imgui_helper.h"
 
+#include "MinHook.h"
+
 class ShowPlayerPopulation :
       public BakkesMod::Plugin::BakkesModPlugin,
       public BakkesMod::Plugin::PluginSettingsWindow,
@@ -33,10 +35,10 @@ private:
       // catch enough people in the custom training editor
 
       static inline const std::string CMD_PREFIX = "spp_";
-      const std::filesystem::path     RECORD_POPULATION_FILE =
-            gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
-      const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE =
-            gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
+      const std::filesystem::path     RECORD_POPULATION_FILE
+            = gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\RecordPopulationData.csv");
+      const std::filesystem::path POP_NUMBER_PLACEMENTS_FILE
+            = gameWrapper->GetDataFolder().append("ShowPlayerPopulation\\FirstTimePopulationNumberPlacements.txt");
       const std::string                            DATETIME_FORMAT_STR = "{0:%F}T{0:%T%z}";
       const std::string                            DATETIME_PARSE_STR  = "%FT%T%z";
       static inline const std::chrono::time_zone * tz                  = std::chrono::current_zone();
@@ -133,8 +135,8 @@ private:
                   return std::format("{:s}{:^11}\n{:^12}", hours > 9 ? " " : "", bot, top);
             }
       };
-      const std::vector<std::string> SHOWN_PLAYLIST_POPS =
-            {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
+      const std::vector<std::string> SHOWN_PLAYLIST_POPS
+            = {"Casual", "Competitive", "Tournament", "Training", "Offline", "Private Match"};
       std::map<std::string, std::vector<std::pair<PlaylistId, int>>> population_data;
       int                                                            TOTAL_IN_GAME_POP   = 0;
       bool                                                           has_graph_data      = false;
@@ -144,8 +146,8 @@ private:
 
       std::shared_ptr<graphed_data_t> graph_total_pop_data     = std::make_shared<graphed_data_t>();
       std::shared_ptr<graphed_data_t> graph_total_in_game_data = std::make_shared<graphed_data_t>();
-      std::shared_ptr<std::map<PlaylistId, graphed_data_t>> graph_data =
-            std::make_shared<std::map<PlaylistId, graphed_data_t>>();
+      std::shared_ptr<std::map<PlaylistId, graphed_data_t>> graph_data
+            = std::make_shared<std::map<PlaylistId, graphed_data_t>>();
 
       std::map<PlaylistId, bool> graph_flags = []() {
             std::map<PlaylistId, bool> tmp;
@@ -249,11 +251,6 @@ private:
       std::chrono::zoned_seconds get_timepoint_from_str(std::string);
 
       // bakkesmod -help
-      void add_notifier(
-            std::string                                   cmd_name,
-            std::function<void(std::vector<std::string>)> do_func,
-            std::string                                   desc,
-            unsigned char                                 PERMISSIONS);
 
 public:
       void onLoad() override;
