@@ -95,7 +95,7 @@ private:
             /// The general format is - takes a "tick value" (a float) and
             /// translates it into a custom string.
             /// </summary>
-            /// <param name="dur">The amount of time since the UNIX epoch</param>
+            /// <param name="inp">The amount of time since the UNIX epoch</param>
             /// <returns></returns>
             inline static std::string xlabel_transform_func(float inp) {
                   std::time_t dur {static_cast<int>(inp)};

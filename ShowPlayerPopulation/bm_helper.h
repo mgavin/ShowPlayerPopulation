@@ -68,16 +68,18 @@ enum class PlaylistId {
       Territory               = 72,
       OnlineFreeplay          = 73,
       TerritoryDoubles        = 74,
+      GodballTerritory        = 75,
       GodballTerritoryDoubles = 76,
       SnowdayTerritory        = 79,
+      RunItBack               = 80,
+      CarWars                 = 81,
+      PizzaParty              = 82,
 };
 
 // fuck clang-lint/tidy "ODR" bullshit.
 namespace bm_helper {
 std::map<PlaylistId, std::string> playlist_ids_str = {
-  // NO MATCHING PLAYLIST
       {                PlaylistId::Unknown,                 "Unknown"},
- // NO MATCHING PLAYLIST
       {                 PlaylistId::Casual,                  "Casual"},
       {                   PlaylistId::Duel,                    "Duel"},
       {                PlaylistId::Doubles,                 "Doubles"},
@@ -92,19 +94,14 @@ std::map<PlaylistId, std::string> playlist_ids_str = {
       {         PlaylistId::RankedStandard,          "RankedStandard"},
       {          PlaylistId::MutatorMashup,           "MutatorMashup"},
       {       PlaylistId::SnowDayPromotion,        "SnowDayPromotion"},
- // NO MATCHING PLAYLIST
       {           PlaylistId::Experimental,            "Experimental"},
- // NO MATCHING PLAYLIST
       {      PlaylistId::BasketballDoubles,       "BasketballDoubles"},
- // NO MATCHING PLAYLIST
       {                 PlaylistId::Rumble,                  "Rumble"},
       {               PlaylistId::Workshop,                "Workshop"},
       {      PlaylistId::UGCTrainingEditor,       "UGCTrainingEditor"},
       {            PlaylistId::UGCTraining,             "UGCTraining"},
       {             PlaylistId::Tournament,              "Tournament"},
- // NO MATCHING PLAYLIST
       {               PlaylistId::Breakout,                "Breakout"},
- // NO MATCHING PLAYLIST
       {               PlaylistId::LANMatch,                "LANMatch"},
       {       PlaylistId::TenthAnniversary,        "TenthAnniversary"},
       {                 PlaylistId::FaceIt,                  "FaceIt"},
@@ -112,39 +109,25 @@ std::map<PlaylistId, std::string> playlist_ids_str = {
       {           PlaylistId::RankedRumble,            "RankedRumble"},
       {         PlaylistId::RankedBreakout,          "RankedBreakout"},
       {          PlaylistId::RankedSnowDay,           "RankedSnowDay"},
- // NO MATCHING PLAYLIST
       {            PlaylistId::HauntedBall,             "HauntedBall"},
- // NO MATCHING PLAYLIST
       {              PlaylistId::BeachBall,               "BeachBall"},
       {                  PlaylistId::Rugby,                   "Rugby"},
       {         PlaylistId::AutoTournament,          "AutoTournament"},
- // NO MATCHING PLAYLIST
       {             PlaylistId::RocketLabs,              "RocketLabs"},
- // NO MATCHING PLAYLIST
       {                PlaylistId::RumShot,                 "RumShot"},
- // NO MATCHING PLAYLIST
       {                PlaylistId::GodBall,                 "GodBall"},
- // NO MATCHING PLAYLIST
       {               PlaylistId::CoopVsAI,                "CoopVsAI"},
       {             PlaylistId::BoomerBall,              "BoomerBall"},
- // NO MATCHING PLAYLIST
       {         PlaylistId::GodBallDoubles,          "GodBallDoubles"},
- // NO MATCHING PLAYLIST
       {         PlaylistId::SpecialSnowDay,          "SpecialSnowDay"},
       {               PlaylistId::Football,                "Football"},
- // NO MATCHING PLAYLIST
       {                  PlaylistId::Cubic,                   "Cubic"},
- // NO MATCHING PLAYLIST
       {         PlaylistId::TacticalRumble,          "TacticalRumble"},
- // NO MATCHING PLAYLIST
       {           PlaylistId::SpringLoaded,            "SpringLoaded"},
       {             PlaylistId::SpeedDemon,              "SpeedDemon"},
- // NO MATCHING PLAYLIST
       {               PlaylistId::RumbleBM,                "RumbleBM"},
       {               PlaylistId::Knockout,                "Knockout"},
- // NO MATCHING PLAYLIST
       {             PlaylistId::Thirdwheel,              "Thirdwheel"},
- // NO MATCHING PLAYLIST
       {          PlaylistId::MagnusFutball,           "MagnusFutball"},
       {          PlaylistId::GodBallSpooky,           "GodBallSpooky"},
       {         PlaylistId::GodBallHaunted,          "GodBallHaunted"},
@@ -155,8 +138,12 @@ std::map<PlaylistId, std::string> playlist_ids_str = {
       {              PlaylistId::Territory,               "Territory"},
       {         PlaylistId::OnlineFreeplay,          "OnlineFreeplay"},
       {       PlaylistId::TerritoryDoubles,        "TerritoryDoubles"},
+      {       PlaylistId::GodballTerritory,        "GodballTerritory"},
       {PlaylistId::GodballTerritoryDoubles, "GodballTerritoryDoubles"},
       {       PlaylistId::SnowdayTerritory,        "SnowdayTerritory"},
+      {              PlaylistId::RunItBack,               "RunItBack"},
+      {                PlaylistId::CarWars,                 "CarWars"},
+      {             PlaylistId::PizzaParty,              "PizzaParty"},
 };
 
 std::map<std::string, PlaylistId> playlist_str_ids = {
@@ -219,8 +206,12 @@ std::map<std::string, PlaylistId> playlist_str_ids = {
       {              "Territory",               PlaylistId::Territory},
       {         "OnlineFreeplay",          PlaylistId::OnlineFreeplay},
       {       "TerritoryDoubles",        PlaylistId::TerritoryDoubles},
+      {       "GodballTerritory",        PlaylistId::GodballTerritory},
       {"GodballTerritoryDoubles", PlaylistId::GodballTerritoryDoubles},
       {       "SnowdayTerritory",        PlaylistId::SnowdayTerritory},
+      {              "RunItBack",               PlaylistId::RunItBack},
+      {                "CarWars",                 PlaylistId::CarWars},
+      {             "PizzaParty",              PlaylistId::PizzaParty},
 };
 
 // More familiar names for playlist ids
@@ -284,8 +275,12 @@ std::map<PlaylistId, std::string> playlist_ids_str_spaced = {
       {              PlaylistId::Territory,                    "Split Shot"},
       {         PlaylistId::OnlineFreeplay,              "Online Free Play"},
       {       PlaylistId::TerritoryDoubles,            "Split Shot Doubles"},
+      {       PlaylistId::GodballTerritory,         "Split Shot Heatseeker"},
       {PlaylistId::GodballTerritoryDoubles, "Split Shot Heatseeker Doubles"},
       {       PlaylistId::SnowdayTerritory,           "Split Shot Snow Day"},
+      {              PlaylistId::RunItBack,                   "Run It Back"},
+      {                PlaylistId::CarWars,                      "Car Wars"},
+      {             PlaylistId::PizzaParty,                   "Pizza Party"},
 };
 
 std::map<std::string, std::vector<PlaylistId>> playlist_categories = {
@@ -329,8 +324,12 @@ std::map<std::string, std::vector<PlaylistId>> playlist_categories = {
        PlaylistId::RumShotDoubles,
        PlaylistId::Territory,
        PlaylistId::TerritoryDoubles,
+       PlaylistId::GodballTerritory,
        PlaylistId::GodballTerritoryDoubles,
-       PlaylistId::SnowdayTerritory}                                                                             },
+       PlaylistId::SnowdayTerritory,
+       PlaylistId::RunItBack,
+       PlaylistId::CarWars,
+       PlaylistId::PizzaParty}                                                                                   },
       {  "Competitive",
        {PlaylistId::RankedSoloDuel,
        PlaylistId::RankedTeamDoubles,

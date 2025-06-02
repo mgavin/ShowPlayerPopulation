@@ -16,10 +16,9 @@
  *
  * OTHERS:
  *  - new project template with cmake [5/10]
- *  - rewrite instant suite [6/10]
  *
  *
- * -- need to rewrite this and redo the project somehow. something's not playing nicely with mutex / the game thread
+ * -- need to rewrite this and redo the project somehow. something's not playing nicely with mutex / the game thread ??
  **/
 
 #include "ShowPlayerPopulation.h"
@@ -42,7 +41,7 @@
 #include "HookedEvents.h"
 #include "Logger.h"
 
-BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.3.5", /*UNUSED*/ NULL);
+BAKKESMOD_PLUGIN(ShowPlayerPopulation, "ShowPlayerPopulation", "2.5.5", /*UNUSED*/ NULL);
 std::shared_ptr<CVarManagerWrapper> _globalCVarManager;
 
 void * ImGuiSettingsReadOpen(ImGuiContext *, ImGuiSettingsHandler *, const char *);
@@ -744,7 +743,7 @@ void ShowPlayerPopulation::RenderSettings() {
       ImGui::NewLine();
 
       // show in main menu, show in game, show in playlist menu | flags
-      if (ImGui::Checkbox("Lock overlay?", &settings.lock_overlay)) {
+      if (ImGui::Checkbox("Lock overlay position?", &settings.lock_overlay_pos)) {
             ImGui::MarkIniSettingsDirty();
       }
 
@@ -813,7 +812,7 @@ void ShowPlayerPopulation::RenderSettings() {
        * overlay, and checkboxes that enable disable movement of windows.
        */
       if (ImGui::Button("SNAPSHOT PLAYLIST NUMBER POSITIONS")) {
-            SNAPSHOT_PLAYLIST_POSITIONS();
+            gameWrapper->Execute([&](GameWrapper * gw) { SNAPSHOT_PLAYLIST_POSITIONS(); });
       }
 
       ImGui::Separator();
@@ -1230,30 +1229,6 @@ void ShowPlayerPopulation::RenderSettings() {
                   "you see the error.");
 
             ImGui::NewLine();
-
-            // Question 10
-            ImGui::Indent(INDENT_OFFSET);
-
-            ImGui::TextUnformatted(
-                  "WHY DOES MY BAKKESMOD.LOG FILL UP WITH \"NO MATCHING PLAYLIST\" "
-                  "ERRORS?");
-            AddUnderline(col_white);
-
-            ImGui::Unindent(INDENT_OFFSET);
-
-            ImGui::TextWrapped(
-                  "Some game modes are enabled/disabled at Psyonix's discretion. If a "
-                  "game mode is disabled, "
-                  "bakkesmod "
-                  "will report there's \"no matching playlist\" when asking for its "
-                  "population data. "
-                  "Unfortunately, it's hardcoded for bakkesmod to emit "
-                  "that error message to the console. I would rather ask for every "
-                  "playlist's population "
-                  "than discredit the playlist because it was disabled at the time it "
-                  "was checked.");
-
-            ImGui::NewLine();
       }
 }
 
@@ -1505,7 +1480,7 @@ void ShowPlayerPopulation::Render() {
             ImGui::SetNextWindowPos(ImVec2(10, 2), ImGuiCond_FirstUseEver);
             set_StyleColor(ImGuiCol_WindowBg, settings.chosen_overlay_color);
             ImGuiWindowFlags flags = ImGuiWindowFlags_None | ImGuiWindowFlags_NoCollapse;
-            if (settings.lock_overlay) {
+            if (settings.lock_overlay_pos) {
                   flags |= ImGuiWindowFlags_NoInputs;
             }
             if (settings.hide_overlay_title_bar) {
@@ -1784,7 +1759,7 @@ static void ImGuiSettingsReadLine(ImGuiContext *, ImGuiSettingsHandler *, void *
 
       int bval;
       if (sscanf(line, "lock_overlay=%d", &bval) == 1) {
-            settings->lock_overlay = bval;
+            settings->lock_overlay_pos = bval;
       }
       if (sscanf(line, "hide_overlay_title_bar=%d", &bval) == 1) {
             settings->hide_overlay_title_bar = bval;
@@ -1825,7 +1800,7 @@ static void ImGuiSettingsWriteAll(ImGuiContext * ctx, ImGuiSettingsHandler * han
       buf->append("\n");
       buf->appendf("vcolo1=%0.3f,vcolo2=%0.3f", settings.vcolos[0], settings.vcolos[1]);
       buf->append("\n");
-      buf->appendf("lock_overlay=%d", settings.lock_overlay);
+      buf->appendf("lock_overlay=%d", settings.lock_overlay_pos);
       buf->append("\n");
       buf->appendf("hide_overlay_title_bar=%d", settings.hide_overlay_title_bar);
       buf->append("\n");
