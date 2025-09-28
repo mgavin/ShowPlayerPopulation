@@ -98,41 +98,33 @@ private:
             /// <param name="inp">The amount of time since the UNIX epoch</param>
             /// <returns></returns>
             inline static std::string xlabel_transform_func(float inp) {
-                  std::time_t dur {static_cast<int>(inp)};
-                  std::tm *   tp    = std::localtime(&dur);
-                  int         hours = tp->tm_hour % 12;
-                  hours             = hours ? hours : 12;
+                  //// the presence of local time (aka time zone) makes std::format have to do allocations
+                  //// that don't get deallocated and therefore std::vformat has to be used
+                  //// a std::chrono::system_clock::time_point wouldn't need them...
+                  auto tp = std::chrono::current_zone()->to_local(
+                        std::chrono::system_clock::time_point {std::chrono::seconds {static_cast<int>(inp)}});
 
-                  char toptemp[10] = {0};
-                  char bottemp[10] = {0};
-                  char top[10]     = {0};
-                  char bot[10]     = {0};
+                  // THE SOLUTION WOULD BE TO PASS THE SECONDS AROUND AS UTC.
+                  // (AND IF THAT'S HAPPENING ALREADY THEN WTF?!?)
 
-                  strftime(toptemp, 10, "%M%p", tp);
-                  strftime(bottemp, 10, "%d/%y", tp);
-                  snprintf(top, 10, "%d:%s", hours, toptemp);  // gets rid of leading 0
-                  snprintf(bot, 10, "%d/%s", tp->tm_mon + 1,
-                           bottemp);  // gets rid of leading 0
-                  return std::format("{:^9}\n{:^10}", top, bot);
+                  std::string time = std::vformat("{0:%I}:{0:%M}{0:%p}", std::make_format_args(tp));
+                  std::string date = std::vformat("{:%x}", std::make_format_args(tp));
+                  return std::format(
+                        "{:^9s}\n{:^10s}",
+                        time.at(0) == '0' ? time.data() + 1 : time.data(),
+                        date.at(0) == '0' ? date.data() + 1 : date.data());
             }
 
             inline static std::string xval_mouse_func(float inp) {
-                  std::time_t dur {static_cast<int>(inp)};
-                  std::tm *   tp    = std::localtime(&dur);
-                  int         hours = tp->tm_hour % 12;
-                  hours             = hours ? hours : 12;
+                  auto tp = std::chrono::current_zone()->to_local(
+                        std::chrono::system_clock::time_point {std::chrono::seconds {static_cast<int>(inp)}});
 
-                  char toptemp[10] = {0};
-                  char bottemp[10] = {0};
-                  char top[10]     = {0};
-                  char bot[10]     = {0};
-
-                  strftime(toptemp, 10, "%M%p", tp);
-                  strftime(bottemp, 10, "%d/%y", tp);
-                  snprintf(top, 10, "%d:%s", hours, toptemp);  // gets rid of leading 0
-                  snprintf(bot, 10, "%d/%s", tp->tm_mon + 1,
-                           bottemp);  // gets rid of leading 0
-                  return std::format("{:s}{:^11}\n{:^12}", hours > 9 ? " " : "", bot, top);
+                  std::string time = std::vformat("{0:%I}:{0:%M}{0:%p}", std::make_format_args(tp));
+                  std::string date = std::vformat("{:%x}", std::make_format_args(tp));
+                  return std::format(
+                        "{:^11}\n{:^12}",
+                        date.at(0) == '0' ? date.data() + 1 : date.data(),
+                        time.at(0) == '0' ? time.data() + 1 : time.data());
             }
       };
       const std::vector<std::string> SHOWN_PLAYLIST_POPS

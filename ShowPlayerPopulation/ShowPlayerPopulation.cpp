@@ -132,7 +132,8 @@ void ShowPlayerPopulation::onLoad() {
       }
 
       // init time zone for graphs
-      _putenv_s("TZ", tz->name().data());
+      // _putenv_s("TZ", tz->name().data());
+      LOG("TIMEZONE: {}", tz->name().data());
 
       // ImGuiIO & io = ImGui::GetIO();
       // overlay_font_22 = io.Fonts->AddFontFromFileTTF(
@@ -1312,7 +1313,7 @@ void ShowPlayerPopulation::clear_graph_flags() {
 }
 
 /// <summary>
-/// RETURNS THE DATETIME AS A STRING!
+/// RETURNS THE CURRENT DATETIME AS A STRING!
 /// </summary>
 /// <returns>_now_ represented as a datetime string</returns>
 std::string ShowPlayerPopulation::get_current_datetime_str() {

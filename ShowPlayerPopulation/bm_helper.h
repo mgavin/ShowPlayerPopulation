@@ -58,6 +58,7 @@ enum class PlaylistId {
       RumbleBM                = 52,
       Knockout                = 54,
       Thirdwheel              = 55,
+      RankedQuads             = 61,
       MagnusFutball           = 62,
       GodBallSpooky           = 64,
       GodBallHaunted          = 65,
@@ -74,6 +75,12 @@ enum class PlaylistId {
       RunItBack               = 80,
       CarWars                 = 81,
       PizzaParty              = 82,
+      PushThePuck             = 83,
+      Possession              = 84,
+      FCShowdown              = 86,
+      Sacrifice               = 87,
+      JumpJam                 = 88,
+      SonicRush               = 89,
 };
 
 // fuck clang-lint/tidy "ODR" bullshit.
@@ -144,6 +151,12 @@ std::map<PlaylistId, std::string> playlist_ids_str = {
       {              PlaylistId::RunItBack,               "RunItBack"},
       {                PlaylistId::CarWars,                 "CarWars"},
       {             PlaylistId::PizzaParty,              "PizzaParty"},
+      {            PlaylistId::PushThePuck,             "PushThePuck"},
+      {             PlaylistId::Possession,              "Possession"},
+      {             PlaylistId::FCShowdown,              "FCShowdown"},
+      {              PlaylistId::Sacrifice,               "Sacrifice"},
+      {                PlaylistId::JumpJam,                 "JumpJam"},
+      {              PlaylistId::SonicRush,               "SonicRush"},
 };
 
 std::map<std::string, PlaylistId> playlist_str_ids = {
@@ -212,6 +225,12 @@ std::map<std::string, PlaylistId> playlist_str_ids = {
       {              "RunItBack",               PlaylistId::RunItBack},
       {                "CarWars",                 PlaylistId::CarWars},
       {             "PizzaParty",              PlaylistId::PizzaParty},
+      {            "PushThePuck",             PlaylistId::PushThePuck},
+      {             "Possession",              PlaylistId::Possession},
+      {             "FCShowdown",              PlaylistId::FCShowdown},
+      {              "Sacrifice",               PlaylistId::Sacrifice},
+      {                "JumpJam",                 PlaylistId::JumpJam},
+      {              "SonicRush",               PlaylistId::SonicRush},
 };
 
 // More familiar names for playlist ids
@@ -281,11 +300,18 @@ std::map<PlaylistId, std::string> playlist_ids_str_spaced = {
       {              PlaylistId::RunItBack,                   "Run It Back"},
       {                PlaylistId::CarWars,                      "Car Wars"},
       {             PlaylistId::PizzaParty,                   "Pizza Party"},
+      {            PlaylistId::PushThePuck,                 "Push The Puck"},
+      {             PlaylistId::Possession,             "Possession Rumble"},
+      {             PlaylistId::FCShowdown,          "Adidas Soccar Strike"},
+      {              PlaylistId::Sacrifice,               "Demolition Duel"},
+      {                PlaylistId::JumpJam,                      "Jump Jam"},
+      {              PlaylistId::SonicRush,                    "Sonic Spin"},
 };
 
 std::map<std::string, std::vector<PlaylistId>> playlist_categories = {
       {       "Casual",
-       {PlaylistId::Duel,
+       {
+       PlaylistId::Duel,
        PlaylistId::Doubles,
        PlaylistId::Standard,
        PlaylistId::Chaos,
@@ -329,7 +355,14 @@ std::map<std::string, std::vector<PlaylistId>> playlist_categories = {
        PlaylistId::SnowdayTerritory,
        PlaylistId::RunItBack,
        PlaylistId::CarWars,
-       PlaylistId::PizzaParty}                                                                                   },
+       PlaylistId::PizzaParty,
+       PlaylistId::PushThePuck,
+       PlaylistId::Possession,
+       PlaylistId::FCShowdown,
+       PlaylistId::Sacrifice,
+       PlaylistId::JumpJam,
+       PlaylistId::SonicRush,
+       }                                                                                                         },
       {  "Competitive",
        {PlaylistId::RankedSoloDuel,
        PlaylistId::RankedTeamDoubles,
