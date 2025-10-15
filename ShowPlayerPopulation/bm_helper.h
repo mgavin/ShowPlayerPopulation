@@ -82,6 +82,7 @@ enum class PlaylistId {
       Sacrifice               = 87,
       JumpJam                 = 88,
       SonicRush               = 89,
+      UpToNoGood = 90,
 };
 
 // fuck clang-lint/tidy "ODR" bullshit.
@@ -159,6 +160,7 @@ std::map<PlaylistId, std::string> playlist_ids_str = {
       {              PlaylistId::Sacrifice,               "Sacrifice"},
       {                PlaylistId::JumpJam,                 "JumpJam"},
       {              PlaylistId::SonicRush,               "SonicRush"},
+            {              PlaylistId::UpToNoGood,               "UpToNoGood"},
 };
 
 std::map<std::string, PlaylistId> playlist_str_ids = {
@@ -234,6 +236,7 @@ std::map<std::string, PlaylistId> playlist_str_ids = {
       {              "Sacrifice",               PlaylistId::Sacrifice},
       {                "JumpJam",                 PlaylistId::JumpJam},
       {              "SonicRush",               PlaylistId::SonicRush},
+      {              "UpToNoGood",               PlaylistId::UpToNoGood},
 };
 
 // More familiar names for playlist ids
@@ -310,6 +313,7 @@ std::map<PlaylistId, std::string> playlist_ids_str_spaced = {
       {              PlaylistId::Sacrifice,               "Demolition Duel"},
       {                PlaylistId::JumpJam,                      "Jump Jam"},
       {              PlaylistId::SonicRush,                    "Sonic Spin"},
+            {              PlaylistId::UpToNoGood,                    "Up To No Good"},
 };
 
 std::map<std::string, std::vector<PlaylistId>> playlist_categories = {
@@ -366,6 +370,7 @@ std::map<std::string, std::vector<PlaylistId>> playlist_categories = {
        PlaylistId::Sacrifice,
        PlaylistId::JumpJam,
        PlaylistId::SonicRush,
+              PlaylistId::UpToNoGood,
        }                                                                                                         },
       {  "Competitive",
        {PlaylistId::RankedSoloDuel,
